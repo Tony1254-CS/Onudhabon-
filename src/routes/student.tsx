@@ -372,6 +372,62 @@ function StudentDashboard() {
                   </div>
                 )}
               </Panel>
+
+              <Panel
+                title="অনুশীলন প্ল্যান"
+                action={
+                  <button
+                    onClick={generatePlan}
+                    disabled={generatingPlan}
+                    className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-500/20 to-blue-500/20 px-3 py-1.5 text-xs font-medium text-amber-200 transition-[background-color,box-shadow] hover:from-amber-500/30 hover:to-blue-500/30 hover:shadow-[0_0_20px_rgba(245,158,11,0.2)] disabled:opacity-50"
+                  >
+                    {generatingPlan ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+                    {generatingPlan ? "তৈরি হচ্ছে…" : "নতুন প্ল্যান"}
+                  </button>
+                }
+              >
+                {plans.length === 0 ? (
+                  <EmptyState
+                    icon={Wand2}
+                    title="এখনও কোনো প্ল্যান নেই — উপরের বোতামে চাপ দাও।"
+                  />
+                ) : (
+                  <div className="space-y-4">
+                    {plans.map((plan) => (
+                      <div key={plan.id} className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.03] to-amber-500/[0.02] p-4">
+                        <div className="mb-3 flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-semibold text-white">{plan.title}</p>
+                            <p className="text-[10px] text-white/40">{new Date(plan.created_at).toLocaleString("bn-BD")}</p>
+                          </div>
+                          <button onClick={() => archivePlan(plan.id)} className="rounded-md p-1 text-white/30 hover:text-red-400" title="আর্কাইভ">
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <ol className="space-y-2">
+                          {(plan.steps || []).map((s, i) => (
+                            <li key={i} className="group flex items-start gap-3 rounded-lg border border-white/5 bg-white/[0.02] p-2.5 transition-colors hover:bg-white/[0.04]">
+                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-[11px] font-bold text-amber-300 tabular-nums">{i + 1}</span>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-white">{s.title}</p>
+                                <p className="mt-0.5 text-xs leading-relaxed text-white/60">{s.description}</p>
+                                <p className="mt-1 text-[10px] text-white/40">⏱ {s.duration_min || 10} মিনিট • {s.concept}</p>
+                              </div>
+                              <Link
+                                to="/learn"
+                                search={{ topic: s.concept }}
+                                className="shrink-0 self-center rounded-md bg-amber-500/20 px-2.5 py-1 text-[10px] font-medium text-amber-300 transition-colors hover:bg-amber-500/30"
+                              >
+                                শুরু →
+                              </Link>
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Panel>
             </div>
 
             {/* RIGHT — goals */}
