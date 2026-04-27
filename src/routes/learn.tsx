@@ -140,15 +140,17 @@ function LearnPage() {
   };
 
   const deleteConcept = async (name: string) => {
+    // Optimistic local removal
     setConcepts((prev) => prev.filter((c) => c.name !== name));
-    if (userId && online && topic) {
-      await supabase
-        .from("concept_nodes")
-        .delete()
-        .eq("user_id", userId)
-        .eq("subject", topic)
-        .eq("concept", name);
-    }
+    if (!userId || !online || !topic) return;
+    await supabase
+      .from("concept_nodes")
+      .delete()
+      .eq("user_id", userId)
+      .eq("subject", topic)
+      .eq("concept", name);
+    // Re-sync with server so the map matches Supabase exactly
+    await loadConceptsForTopic(topic);
   };
 
   const startTeaching = async (t: string) => {
