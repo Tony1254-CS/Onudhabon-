@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Brain, Target, Sparkles, Plus, Trash2, CheckCircle2, Circle, ArrowRight, Flame, BookOpen } from "lucide-react";
+import { Brain, Target, Sparkles, Plus, Trash2, CheckCircle2, Circle, ArrowRight, Flame, BookOpen, Bell, Wand2, Loader2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/landing/Navbar";
 import { StatCard, MasteryRing } from "@/components/dashboard/StatCard";
@@ -16,6 +16,9 @@ export const Route = createFileRoute("/student")({
 type Concept = { id: string; concept: string; subject: string | null; mastery_level: number | null; last_reviewed: string | null; created_at: string };
 type Session = { id: string; topic: string | null; subject: string | null; mastery_score: number | null; cognitive_state: string | null; created_at: string; messages: unknown };
 type Goal = { id: string; topic: string; target_date: string | null; status: string; notes: string | null; created_at: string };
+type Notification = { id: string; type: string; title: string; body: string | null; goal_id: string | null; read_at: string | null; created_at: string };
+type PlanStep = { concept: string; title: string; description: string; duration_min: number };
+type Plan = { id: string; title: string; steps: PlanStep[]; status: string; created_at: string };
 
 const STATE_EMOJI: Record<string, string> = {
   focused: "🎯", confused: "😕", overloaded: "🥵", disengaged: "💤", "mastery-ready": "✨",
@@ -30,7 +33,11 @@ function StudentDashboard() {
   const [concepts, setConcepts] = useState<Concept[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [generatingPlan, setGeneratingPlan] = useState(false);
+  const [showInbox, setShowInbox] = useState(false);
 
   const [newGoal, setNewGoal] = useState("");
   const [newGoalDate, setNewGoalDate] = useState("");
@@ -58,19 +65,25 @@ function StudentDashboard() {
     let mounted = true;
     (async () => {
       setLoading(true);
-      const [{ data: cn }, { data: ss }, { data: gs }] = await Promise.all([
+      const [{ data: cn }, { data: ss }, { data: gs }, { data: ns }, { data: pp }] = await Promise.all([
         supabase.from("concept_nodes").select("*").eq("user_id", userId),
         supabase.from("sessions").select("id, topic, subject, mastery_score, cognitive_state, created_at, messages").eq("user_id", userId).order("created_at", { ascending: false }).limit(50),
         supabase.from("learning_goals").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
+        supabase.from("notifications").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
+        supabase.from("practice_plans").select("*").eq("user_id", userId).eq("status", "active").order("created_at", { ascending: false }).limit(3),
       ]);
       if (!mounted) return;
       setConcepts((cn || []) as Concept[]);
       setSessions((ss || []) as Session[]);
       setGoals((gs || []) as Goal[]);
+      setNotifications((ns || []) as Notification[]);
+      setPlans(((pp || []) as unknown) as Plan[]);
       setLoading(false);
     })();
     return () => { mounted = false; };
   }, [userId]);
+
+  const unreadCount = useMemo(() => notifications.filter((n) => !n.read_at).length, [notifications]);
 
   const stats = useMemo(() => {
     const total = concepts.length;
@@ -154,6 +167,43 @@ function StudentDashboard() {
     await supabase.from("learning_goals").delete().eq("id", id);
   };
 
+  const markNotificationRead = async (id: string) => {
+    setNotifications((p) => p.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n)));
+    await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id);
+  };
+
+  const markAllRead = async () => {
+    if (!userId || unreadCount === 0) return;
+    const now = new Date().toISOString();
+    setNotifications((p) => p.map((n) => (n.read_at ? n : { ...n, read_at: now })));
+    await supabase.from("notifications").update({ read_at: now }).eq("user_id", userId).is("read_at", null);
+  };
+
+  const generatePlan = async () => {
+    if (generatingPlan) return;
+    setGeneratingPlan(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-practice-plan", { body: {} });
+      if (error) throw error;
+      if (data?.plan) {
+        setPlans((p) => [data.plan as Plan, ...p].slice(0, 3));
+        toast.success("নতুন প্ল্যান তৈরি হয়েছে!");
+      } else {
+        toast.info(data?.message || "কোনো দুর্বল ধারণা নেই।");
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("প্ল্যান তৈরি করা যায়নি — আবার চেষ্টা করো।");
+    } finally {
+      setGeneratingPlan(false);
+    }
+  };
+
+  const archivePlan = async (id: string) => {
+    setPlans((p) => p.filter((x) => x.id !== id));
+    await supabase.from("practice_plans").update({ status: "archived" }).eq("id", id);
+  };
+
   if (!authChecked) {
     return <div className="grid min-h-screen place-items-center bg-[#080B14] text-white/60">যাচাই হচ্ছে…</div>;
   }
@@ -163,14 +213,75 @@ function StudentDashboard() {
       <Navbar />
       <main className="mx-auto max-w-6xl px-4 pb-20 pt-24">
         {/* Header */}
-        <header className="mb-8">
-          <motion.h1
-            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            className="text-balance text-3xl font-bold tracking-tight sm:text-4xl"
-          >
-            স্বাগতম, <span className="bg-gradient-to-r from-amber-300 to-blue-400 bg-clip-text text-transparent">{name}</span>
-          </motion.h1>
-          <p className="mt-2 text-sm text-white/50">তোমার শেখার যাত্রা এক ঝলকে</p>
+        <header className="mb-8 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <motion.h1
+              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+              className="text-balance text-3xl font-bold tracking-tight sm:text-4xl"
+            >
+              স্বাগতম, <span className="bg-gradient-to-r from-amber-300 to-blue-400 bg-clip-text text-transparent">{name}</span>
+            </motion.h1>
+            <p className="mt-2 text-sm text-white/50">তোমার শেখার যাত্রা এক ঝলকে</p>
+          </div>
+          <div className="relative">
+            <button
+              onClick={() => setShowInbox((v) => !v)}
+              className="relative flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white transition-[background-color,box-shadow] hover:bg-white/10 hover:shadow-lg"
+            >
+              <Bell className="h-4 w-4" />
+              <span>ইনবক্স</span>
+              {unreadCount > 0 && (
+                <span className="ml-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-black tabular-nums">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+            <AnimatePresence>
+              {showInbox && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 top-full z-30 mt-2 w-[min(92vw,360px)] rounded-2xl border border-white/10 bg-[#0c0f1a] p-3 shadow-2xl backdrop-blur-xl"
+                >
+                  <div className="mb-2 flex items-center justify-between px-1">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-white/60">নোটিফিকেশন</p>
+                    <div className="flex items-center gap-2">
+                      {unreadCount > 0 && (
+                        <button onClick={markAllRead} className="text-[10px] text-amber-300 hover:text-amber-200">সব পড়া দাও</button>
+                      )}
+                      <button onClick={() => setShowInbox(false)} className="text-white/40 hover:text-white"><X className="h-3.5 w-3.5" /></button>
+                    </div>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <p className="px-2 py-6 text-center text-xs text-white/40">কোনো নোটিফিকেশন নেই।</p>
+                    ) : (
+                      <ul className="space-y-1">
+                        {notifications.map((n) => (
+                          <li
+                            key={n.id}
+                            onClick={() => !n.read_at && markNotificationRead(n.id)}
+                            className={`cursor-pointer rounded-lg p-2.5 transition-colors ${n.read_at ? "bg-white/[0.02] hover:bg-white/[0.04]" : "bg-amber-500/10 hover:bg-amber-500/15"}`}
+                          >
+                            <div className="flex items-start gap-2">
+                              {!n.read_at && <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />}
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-medium text-white">{n.title}</p>
+                                {n.body && <p className="mt-0.5 text-[11px] leading-relaxed text-white/60">{n.body}</p>}
+                                <p className="mt-1 text-[10px] text-white/40">{new Date(n.created_at).toLocaleString("bn-BD")}</p>
+                              </div>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </header>
 
         {/* Stats */}
@@ -258,6 +369,62 @@ function StudentDashboard() {
                         </Link>
                       );
                     })}
+                  </div>
+                )}
+              </Panel>
+
+              <Panel
+                title="অনুশীলন প্ল্যান"
+                action={
+                  <button
+                    onClick={generatePlan}
+                    disabled={generatingPlan}
+                    className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-500/20 to-blue-500/20 px-3 py-1.5 text-xs font-medium text-amber-200 transition-[background-color,box-shadow] hover:from-amber-500/30 hover:to-blue-500/30 hover:shadow-[0_0_20px_rgba(245,158,11,0.2)] disabled:opacity-50"
+                  >
+                    {generatingPlan ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+                    {generatingPlan ? "তৈরি হচ্ছে…" : "নতুন প্ল্যান"}
+                  </button>
+                }
+              >
+                {plans.length === 0 ? (
+                  <EmptyState
+                    icon={Wand2}
+                    title="এখনও কোনো প্ল্যান নেই — উপরের বোতামে চাপ দাও।"
+                  />
+                ) : (
+                  <div className="space-y-4">
+                    {plans.map((plan) => (
+                      <div key={plan.id} className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.03] to-amber-500/[0.02] p-4">
+                        <div className="mb-3 flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-semibold text-white">{plan.title}</p>
+                            <p className="text-[10px] text-white/40">{new Date(plan.created_at).toLocaleString("bn-BD")}</p>
+                          </div>
+                          <button onClick={() => archivePlan(plan.id)} className="rounded-md p-1 text-white/30 hover:text-red-400" title="আর্কাইভ">
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <ol className="space-y-2">
+                          {(plan.steps || []).map((s, i) => (
+                            <li key={i} className="group flex items-start gap-3 rounded-lg border border-white/5 bg-white/[0.02] p-2.5 transition-colors hover:bg-white/[0.04]">
+                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-[11px] font-bold text-amber-300 tabular-nums">{i + 1}</span>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-white">{s.title}</p>
+                                <p className="mt-0.5 text-xs leading-relaxed text-white/60">{s.description}</p>
+                                <p className="mt-1 text-[10px] text-white/40">⏱ {s.duration_min || 10} মিনিট • {s.concept}</p>
+                              </div>
+                              <Link
+                                to="/learn"
+                                search={{ topic: s.concept }}
+                                className="shrink-0 self-center rounded-md bg-amber-500/20 px-2.5 py-1 text-[10px] font-medium text-amber-300 transition-colors hover:bg-amber-500/30"
+                              >
+                                শুরু →
+                              </Link>
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    ))}
                   </div>
                 )}
               </Panel>
@@ -355,10 +522,13 @@ function GoalItem({ goal, onToggle, onDelete }: { goal: Goal; onToggle: (g: Goal
   );
 }
 
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+function Panel({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-xl">
-      <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white/70">{title}</h2>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-white/70">{title}</h2>
+        {action}
+      </div>
       {children}
     </section>
   );
