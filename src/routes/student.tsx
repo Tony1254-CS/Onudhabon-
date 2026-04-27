@@ -84,6 +84,8 @@ function StudentDashboard() {
   }, [userId]);
 
   const unreadCount = useMemo(() => notifications.filter((n) => !n.read_at).length, [notifications]);
+
+  const stats = useMemo(() => {
     const total = concepts.length;
     const masteries = concepts.map((c) => c.mastery_level ?? 0);
     const avg = masteries.length ? masteries.reduce((a, b) => a + b, 0) / masteries.length : 0;
