@@ -70,7 +70,7 @@ export function Hero() {
           className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass text-xs text-[var(--text-secondary)] mb-8"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-cold-blue)] animate-pulse" />
-          A Cognitive Flow Learning System
+          Live AI · powered by Gemini · NCTB-grounded
         </motion.div>
 
         <motion.h1
