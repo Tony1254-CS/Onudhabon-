@@ -7,13 +7,14 @@ import { CognitivePanel } from "@/components/learn/CognitivePanel";
 import type { CognitiveState } from "@/hooks/useCognitiveState";
 
 export function MobileLearnDrawers({
-  topic, onTopic, nodes, concepts, cognitiveState,
+  topic, onTopic, nodes, concepts, cognitiveState, onDeleteConcept,
 }: {
   topic: string;
   onTopic: (t: string) => void;
   nodes: ConceptNode[];
   concepts: ExtractedConcept[];
   cognitiveState: CognitiveState;
+  onDeleteConcept?: (name: string) => void;
 }) {
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
@@ -39,7 +40,7 @@ export function MobileLearnDrawers({
       </MobileSheet>
       <MobileSheet open={rightOpen} onClose={() => setRightOpen(false)} side="bottom" title="Live Mind Map">
         <div className="flex flex-col h-full">
-          <div className="flex-1 min-h-[280px]"><MindMap concepts={concepts} /></div>
+          <div className="flex-1 min-h-[280px]"><MindMap concepts={concepts} onDelete={onDeleteConcept} /></div>
           <div className="border-t border-white/10"><CognitivePanel state={cognitiveState} /></div>
         </div>
       </MobileSheet>

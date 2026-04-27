@@ -139,6 +139,18 @@ function LearnPage() {
       .upsert(rows, { onConflict: "user_id,subject,concept" });
   };
 
+  const deleteConcept = async (name: string) => {
+    setConcepts((prev) => prev.filter((c) => c.name !== name));
+    if (userId && online && topic) {
+      await supabase
+        .from("concept_nodes")
+        .delete()
+        .eq("user_id", userId)
+        .eq("subject", topic)
+        .eq("concept", name);
+    }
+  };
+
   const startTeaching = async (t: string) => {
     setTopic(t);
     setPhase("teaching");
@@ -271,7 +283,7 @@ function LearnPage() {
       <Navbar />
       <div className="pt-16 h-screen flex">
         <LeftPanel topic={topic} onTopic={startTeaching} nodes={leftNodes} />
-        <MobileLearnDrawers topic={topic} onTopic={startTeaching} nodes={leftNodes} concepts={concepts} cognitiveState={cognitiveState} />
+        <MobileLearnDrawers topic={topic} onTopic={startTeaching} nodes={leftNodes} concepts={concepts} cognitiveState={cognitiveState} onDeleteConcept={deleteConcept} />
 
         {/* CENTER */}
         <main className="flex-1 flex flex-col min-w-0 relative">
@@ -398,7 +410,7 @@ function LearnPage() {
               )}
               {extracting ? "Extracting…" : "Live Mind Map"}
             </div>
-            <MindMap concepts={concepts} extracting={extracting} />
+            <MindMap concepts={concepts} extracting={extracting} onDelete={deleteConcept} />
           </div>
           <div className="h-[40%]">
             <CognitivePanel state={cognitiveState} />
