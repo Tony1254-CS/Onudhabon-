@@ -1,9 +1,18 @@
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
+import { Volume2, VolumeX } from "lucide-react";
 import type { ChatMsg } from "@/hooks/useChatStream";
+import { useSpeech } from "@/hooks/useSpeech";
 
 export function MessageBubble({ msg, streaming }: { msg: ChatMsg & { image?: string }; streaming?: boolean }) {
   const isAI = msg.role === "assistant";
+  const { supported: ttsSupported, speaking, speak, cancel } = useSpeech();
+
+  const onSpeak = () => {
+    if (speaking) cancel();
+    else speak(msg.content, "bn-BD");
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -12,7 +21,7 @@ export function MessageBubble({ msg, streaming }: { msg: ChatMsg & { image?: str
       className={`flex ${isAI ? "justify-start" : "justify-end"} mb-4`}
     >
       <div
-        className={`max-w-[78%] px-4 py-3 rounded-2xl backdrop-blur-xl border text-[15px] leading-relaxed ${
+        className={`group relative max-w-[78%] px-4 py-3 rounded-2xl backdrop-blur-xl border text-[15px] leading-relaxed ${
           isAI
             ? "bg-white/[0.03] border-[var(--accent-blue)]/30 rounded-tl-sm"
             : "bg-[var(--accent-purple)]/10 border-[var(--accent-purple)]/30 rounded-tr-sm"
@@ -31,6 +40,15 @@ export function MessageBubble({ msg, streaming }: { msg: ChatMsg & { image?: str
         </div>
         {streaming && isAI && (
           <span className="inline-block w-1.5 h-4 ml-0.5 align-middle bg-[var(--accent-cold-blue)] animate-pulse rounded-sm" />
+        )}
+        {isAI && ttsSupported && msg.content && !streaming && (
+          <button
+            onClick={onSpeak}
+            title={speaking ? "থামাও" : "শোনো"}
+            className="absolute -bottom-3 -right-2 p-1.5 rounded-full bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--accent-cold-blue)] hover:border-[var(--accent-blue)]/50 opacity-0 group-hover:opacity-100 transition-all"
+          >
+            {speaking ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+          </button>
         )}
       </div>
     </motion.div>
