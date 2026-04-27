@@ -1,26 +1,44 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { ParticleField } from "@/components/landing/ParticleField";
+import { Navbar } from "@/components/landing/Navbar";
+import { Hero } from "@/components/landing/Hero";
+import { Problem } from "@/components/landing/Problem";
+import { Innovation } from "@/components/landing/Innovation";
+import { Features } from "@/components/landing/Features";
+import { DemoFlow } from "@/components/landing/DemoFlow";
+import { CTA } from "@/components/landing/CTA";
+import { Footer } from "@/components/landing/Footer";
 
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [
+      { title: "অনুধাবন AI — A Cognitive Flow Learning System" },
+      {
+        name: "description",
+        content:
+          "The first adaptive learning platform that understands not just what you don't know — but how you feel while not knowing it. Built for Bangladesh.",
+      },
+      { property: "og:title", content: "অনুধাবন AI — Cognitive Flow Learning" },
+      { property: "og:description", content: "Adaptive, Bangla-first learning that maps your mind in real time." },
+    ],
+  }),
+  component: Landing,
 });
 
-// IMPORTANT: Replace this placeholder. For sites with multiple pages (About, Services, Contact, etc.),
-// create separate route files (about.tsx, services.tsx, contact.tsx) — don't put all pages in this file.
-function PlaceholderIndex() {
+function Landing() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="relative min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
+      <ParticleField />
+      <Navbar />
+      <main className="relative z-10">
+        <Hero />
+        <Problem />
+        <Innovation />
+        <Features />
+        <DemoFlow />
+        <CTA />
+      </main>
+      <Footer />
     </div>
   );
-}
-
-function Index() {
-  return <PlaceholderIndex />;
 }
