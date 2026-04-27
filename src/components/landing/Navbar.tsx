@@ -70,11 +70,12 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <button
+          <Link
+            to="/demo"
             className="hidden sm:inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-medium border border-[var(--accent-gold)]/60 text-[var(--accent-gold)] hover:bg-[var(--accent-gold)] hover:text-[var(--bg-primary)] transition-all"
           >
-            Demo
-          </button>
+            Demo Tour
+          </Link>
           <Link
             to="/login"
             className="hidden sm:inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors font-bangla"
