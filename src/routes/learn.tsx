@@ -11,10 +11,16 @@ import { MessageBubble, TypingDots } from "@/components/learn/MessageBubble";
 import { ChatInput } from "@/components/learn/ChatInput";
 import { TopicInput } from "@/components/learn/TopicInput";
 import { ResultCard } from "@/components/learn/ResultCard";
+import { AttentionWidget, AttentionConsentModal, type AttentionStatus } from "@/components/learn/AttentionWidget";
 import { useChatStream, type ChatMsg } from "@/hooks/useChatStream";
-import { useCognitiveState, type Signal } from "@/hooks/useCognitiveState";
+import { useCognitiveState, type Signal, type CognitiveState } from "@/hooks/useCognitiveState";
+
+type LearnSearch = { topic?: string };
 
 export const Route = createFileRoute("/learn")({
+  validateSearch: (search: Record<string, unknown>): LearnSearch => ({
+    topic: typeof search.topic === "string" ? search.topic : undefined,
+  }),
   head: () => ({ meta: [{ title: "Learn — অনুধাবন AI" }] }),
   component: LearnPage,
 });
