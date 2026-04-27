@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LearnRouteImport } from './routes/learn'
+import { Route as GalaxyRouteImport } from './routes/galaxy'
 import { Route as IndexRouteImport } from './routes/index'
 
 const SignupRoute = SignupRouteImport.update({
@@ -29,6 +30,11 @@ const LearnRoute = LearnRouteImport.update({
   path: '/learn',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GalaxyRoute = GalaxyRouteImport.update({
+  id: '/galaxy',
+  path: '/galaxy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -37,12 +43,14 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/galaxy': typeof GalaxyRoute
   '/learn': typeof LearnRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/galaxy': typeof GalaxyRoute
   '/learn': typeof LearnRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
@@ -50,20 +58,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/galaxy': typeof GalaxyRoute
   '/learn': typeof LearnRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/learn' | '/login' | '/signup'
+  fullPaths: '/' | '/galaxy' | '/learn' | '/login' | '/signup'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/learn' | '/login' | '/signup'
-  id: '__root__' | '/' | '/learn' | '/login' | '/signup'
+  to: '/' | '/galaxy' | '/learn' | '/login' | '/signup'
+  id: '__root__' | '/' | '/galaxy' | '/learn' | '/login' | '/signup'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  GalaxyRoute: typeof GalaxyRoute
   LearnRoute: typeof LearnRoute
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
@@ -92,6 +102,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LearnRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/galaxy': {
+      id: '/galaxy'
+      path: '/galaxy'
+      fullPath: '/galaxy'
+      preLoaderRoute: typeof GalaxyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -104,6 +121,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  GalaxyRoute: GalaxyRoute,
   LearnRoute: LearnRoute,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
