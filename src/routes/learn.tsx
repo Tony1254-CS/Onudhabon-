@@ -139,6 +139,18 @@ function LearnPage() {
       .upsert(rows, { onConflict: "user_id,subject,concept" });
   };
 
+  const deleteConcept = async (name: string) => {
+    setConcepts((prev) => prev.filter((c) => c.name !== name));
+    if (userId && online && topic) {
+      await supabase
+        .from("concept_nodes")
+        .delete()
+        .eq("user_id", userId)
+        .eq("subject", topic)
+        .eq("concept", name);
+    }
+  };
+
   const startTeaching = async (t: string) => {
     setTopic(t);
     setPhase("teaching");
