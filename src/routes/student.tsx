@@ -167,6 +167,43 @@ function StudentDashboard() {
     await supabase.from("learning_goals").delete().eq("id", id);
   };
 
+  const markNotificationRead = async (id: string) => {
+    setNotifications((p) => p.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n)));
+    await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id);
+  };
+
+  const markAllRead = async () => {
+    if (!userId || unreadCount === 0) return;
+    const now = new Date().toISOString();
+    setNotifications((p) => p.map((n) => (n.read_at ? n : { ...n, read_at: now })));
+    await supabase.from("notifications").update({ read_at: now }).eq("user_id", userId).is("read_at", null);
+  };
+
+  const generatePlan = async () => {
+    if (generatingPlan) return;
+    setGeneratingPlan(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-practice-plan", { body: {} });
+      if (error) throw error;
+      if (data?.plan) {
+        setPlans((p) => [data.plan as Plan, ...p].slice(0, 3));
+        toast.success("নতুন প্ল্যান তৈরি হয়েছে!");
+      } else {
+        toast.info(data?.message || "কোনো দুর্বল ধারণা নেই।");
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("প্ল্যান তৈরি করা যায়নি — আবার চেষ্টা করো।");
+    } finally {
+      setGeneratingPlan(false);
+    }
+  };
+
+  const archivePlan = async (id: string) => {
+    setPlans((p) => p.filter((x) => x.id !== id));
+    await supabase.from("practice_plans").update({ status: "archived" }).eq("id", id);
+  };
+
   if (!authChecked) {
     return <div className="grid min-h-screen place-items-center bg-[#080B14] text-white/60">যাচাই হচ্ছে…</div>;
   }
