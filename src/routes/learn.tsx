@@ -11,10 +11,16 @@ import { MessageBubble, TypingDots } from "@/components/learn/MessageBubble";
 import { ChatInput } from "@/components/learn/ChatInput";
 import { TopicInput } from "@/components/learn/TopicInput";
 import { ResultCard } from "@/components/learn/ResultCard";
+import { AttentionWidget, AttentionConsentModal, type AttentionStatus } from "@/components/learn/AttentionWidget";
 import { useChatStream, type ChatMsg } from "@/hooks/useChatStream";
-import { useCognitiveState, type Signal } from "@/hooks/useCognitiveState";
+import { useCognitiveState, type Signal, type CognitiveState } from "@/hooks/useCognitiveState";
+
+type LearnSearch = { topic?: string };
 
 export const Route = createFileRoute("/learn")({
+  validateSearch: (search: Record<string, unknown>): LearnSearch => ({
+    topic: typeof search.topic === "string" ? search.topic : undefined,
+  }),
   head: () => ({ meta: [{ title: "Learn — অনুধাবন AI" }] }),
   component: LearnPage,
 });
@@ -26,6 +32,7 @@ const KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 function LearnPage() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -37,8 +44,15 @@ function LearnPage() {
   const [showTeachBack, setShowTeachBack] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Attention engine state
+  const [attentionEnabled, setAttentionEnabled] = useState(false);
+  const [showConsent, setShowConsent] = useState(false);
+  const [attentionStatus, setAttentionStatus] = useState<AttentionStatus>("off");
+  const attentionOverrideRef = useRef<CognitiveState | null>(null);
+
   const { send, streaming, provider } = useChatStream();
-  const cognitiveState = useCognitiveState(signals, phase === "socratic" ? "socratic" : "teaching");
+  const baseState = useCognitiveState(signals, phase === "socratic" ? "socratic" : "teaching");
+  const cognitiveState: CognitiveState = attentionOverrideRef.current ?? baseState;
 
   // auth gate
   useEffect(() => {
@@ -54,6 +68,23 @@ function LearnPage() {
     });
     return () => { mounted = false; sub.subscription.unsubscribe(); };
   }, [navigate]);
+
+  // Auto-start teaching from ?topic= deep link (e.g. from Galaxy)
+  useEffect(() => {
+    if (authed && search.topic && phase === "topic") {
+      startTeaching(search.topic);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed, search.topic]);
+
+  // Attention -> cognitive state override
+  useEffect(() => {
+    if (!attentionEnabled) { attentionOverrideRef.current = null; return; }
+    if (attentionStatus === "no-face") attentionOverrideRef.current = "disengaged";
+    else if (attentionStatus === "looking-away") attentionOverrideRef.current = "confused";
+    else if (attentionStatus === "focused") attentionOverrideRef.current = "focused";
+    else attentionOverrideRef.current = null;
+  }, [attentionEnabled, attentionStatus]);
 
   // autoscroll
   useEffect(() => {
@@ -204,6 +235,19 @@ function LearnPage() {
               </div>
             </div>
           )}
+
+          {/* Attention engine: icon when off, widget when on */}
+          <AttentionWidget
+            enabled={attentionEnabled}
+            onConsentRequest={() => setShowConsent(true)}
+            onDisable={() => setAttentionEnabled(false)}
+            onSignal={(s) => setAttentionStatus(s.status)}
+          />
+          <AttentionConsentModal
+            open={showConsent}
+            onAccept={() => { setShowConsent(false); setAttentionEnabled(true); }}
+            onCancel={() => setShowConsent(false)}
+          />
 
           {phase === "topic" ? (
             <TopicInput onPick={startTeaching} />
