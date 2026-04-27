@@ -5,6 +5,8 @@ import { GraduationCap, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/landing/Navbar";
 import { LeftPanel, type ConceptNode } from "@/components/learn/LeftPanel";
+import { MobileSheet } from "@/components/learn/MobileSheet";
+import { Menu, Brain } from "lucide-react";
 import { MindMap, type ExtractedConcept } from "@/components/learn/MindMap";
 import { CognitivePanel } from "@/components/learn/CognitivePanel";
 import { MessageBubble, TypingDots } from "@/components/learn/MessageBubble";
