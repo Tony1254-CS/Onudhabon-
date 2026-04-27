@@ -236,6 +236,19 @@ function LearnPage() {
             </div>
           )}
 
+          {/* Attention engine: icon when off, widget when on */}
+          <AttentionWidget
+            enabled={attentionEnabled}
+            onConsentRequest={() => setShowConsent(true)}
+            onDisable={() => setAttentionEnabled(false)}
+            onSignal={(s) => setAttentionStatus(s.status)}
+          />
+          <AttentionConsentModal
+            open={showConsent}
+            onAccept={() => { setShowConsent(false); setAttentionEnabled(true); }}
+            onCancel={() => setShowConsent(false)}
+          />
+
           {phase === "topic" ? (
             <TopicInput onPick={startTeaching} />
           ) : (
