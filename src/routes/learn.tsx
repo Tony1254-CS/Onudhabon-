@@ -410,7 +410,7 @@ function LearnPage() {
               )}
               {extracting ? "Extracting…" : "Live Mind Map"}
             </div>
-            <MindMap concepts={concepts} extracting={extracting} />
+            <MindMap concepts={concepts} extracting={extracting} onDelete={deleteConcept} />
           </div>
           <div className="h-[40%]">
             <CognitivePanel state={cognitiveState} />
