@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.extract-concepts]
 verify_jwt = false
+
+[functions.schedule-goal-reminders]
+verify_jwt = false
+
+[functions.generate-practice-plan]
+verify_jwt = false
