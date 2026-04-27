@@ -10,8 +10,8 @@ export function ChatInput({
   const [image, setImage] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const { recording, supported, start, stop } = useVoiceInput((t, final) => {
-    setText((prev) => final ? (prev + " " + t).trim() : t);
+  const { recording, supported, start, stop } = useVoiceInput((t) => {
+    setText(t);
   });
 
   const onPickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -61,7 +61,7 @@ export function ChatInput({
 
         {supported && (
           <motion.button
-            onClick={() => { if (voiceDisabled) return; recording ? stop() : start(); }}
+            onClick={() => { if (voiceDisabled) return; recording ? stop() : start(text); }}
             disabled={voiceDisabled}
             className="shrink-0 p-2.5 rounded-xl border transition-all relative disabled:opacity-40 disabled:cursor-not-allowed"
             style={{

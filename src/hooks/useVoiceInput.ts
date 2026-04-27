@@ -5,6 +5,7 @@ interface SR extends EventTarget {
   lang: string;
   continuous: boolean;
   interimResults: boolean;
+  maxAlternatives?: number;
   start: () => void;
   stop: () => void;
   abort: () => void;
@@ -19,14 +20,77 @@ export function useVoiceInput(onTranscript: (text: string, final: boolean) => vo
   const [supported, setSupported] = useState(false);
   const recRef = useRef<SR | null>(null);
   const cbRef = useRef(onTranscript);
+  const shouldContinueRef = useRef(false);
+  const baseTextRef = useRef("");
+  const finalTextRef = useRef("");
   cbRef.current = onTranscript;
 
   useEffect(() => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     setSupported(!!SR);
+    return () => {
+      shouldContinueRef.current = false;
+      try { recRef.current?.abort(); } catch { /* noop */ }
+    };
   }, []);
 
-  const start = useCallback(async () => {
+  const createRecognition = useCallback((SR: any) => {
+    const rec: SR = new SR();
+    rec.lang = "bn-BD";
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
+    rec.onstart = () => setRecording(true);
+    rec.onresult = (e: any) => {
+      let committed = finalTextRef.current;
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = String(e.results[i][0].transcript ?? "").replace(/\s+/g, " ").trim();
+        if (!t) continue;
+        if (e.results[i].isFinal) committed = `${committed} ${t}`.trim();
+        else interim = `${interim} ${t}`.trim();
+      }
+      finalTextRef.current = committed;
+      const composed = [committed, interim].filter(Boolean).join(" ").trim() || baseTextRef.current;
+      cbRef.current(composed, !interim);
+    };
+    rec.onerror = (e: any) => {
+      const code = e?.error ?? "unknown";
+      if (code === "no-speech") {
+        toast.message("কথা শোনা যাচ্ছে না — আবার বলো।");
+      } else if (code === "not-allowed" || code === "service-not-allowed") {
+        shouldContinueRef.current = false;
+        toast.error("মাইক্রোফোনের অনুমতি দরকার।");
+      } else if (code === "audio-capture") {
+        shouldContinueRef.current = false;
+        toast.error("মাইক্রোফোন থেকে অডিও ধরা যাচ্ছে না।");
+      } else if (code === "network") {
+        toast.error("ভয়েস স্বীকৃতির সংযোগ বিচ্ছিন্ন হয়েছে।");
+      } else if (code !== "aborted") {
+        toast.error("ভয়েস ত্রুটি: " + code);
+      }
+      if (code !== "no-speech") setRecording(false);
+    };
+    rec.onend = () => {
+      if (!shouldContinueRef.current) {
+        setRecording(false);
+        recRef.current = null;
+        return;
+      }
+      window.setTimeout(() => {
+        if (!shouldContinueRef.current) return;
+        try {
+          recRef.current = createRecognition(SR);
+          recRef.current.start();
+        } catch {
+          setRecording(false);
+        }
+      }, 150);
+    };
+    return rec;
+  }, []);
+
+  const start = useCallback(async (initialText = "") => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
       toast.error("এই ব্রাউজারে ভয়েস ইনপুট সমর্থিত নয়। Chrome ব্যবহার করো।");
@@ -49,45 +113,23 @@ export function useVoiceInput(onTranscript: (text: string, final: boolean) => vo
       return;
     }
 
-    const rec: SR = new SR();
-    rec.lang = "bn-BD";
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.onstart = () => setRecording(true);
-    rec.onresult = (e: any) => {
-      let interim = "", final = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const t = e.results[i][0].transcript;
-        if (e.results[i].isFinal) final += t;
-        else interim += t;
-      }
-      if (final) cbRef.current(final, true);
-      else if (interim) cbRef.current(interim, false);
-    };
-    rec.onerror = (e: any) => {
-      const code = e?.error ?? "unknown";
-      if (code === "no-speech") {
-        toast.message("কোনো কথা শোনা যায়নি।");
-      } else if (code === "not-allowed" || code === "service-not-allowed") {
-        toast.error("মাইক্রোফোনের অনুমতি দরকার।");
-      } else if (code === "network") {
-        toast.error("ভয়েস স্বীকৃতি সার্ভারে পৌঁছানো যায়নি (network)।");
-      } else if (code !== "aborted") {
-        toast.error("ভয়েস ত্রুটি: " + code);
-      }
-      setRecording(false);
-    };
-    rec.onend = () => setRecording(false);
-    recRef.current = rec;
+    shouldContinueRef.current = true;
+    baseTextRef.current = initialText.trim();
+    finalTextRef.current = initialText.trim();
+
+    try { recRef.current?.abort(); } catch { /* noop */ }
+    recRef.current = createRecognition(SR);
     try {
-      rec.start();
+      recRef.current.start();
     } catch (err: any) {
+      shouldContinueRef.current = false;
       toast.error("ভয়েস শুরু করা যায়নি: " + (err?.message ?? "unknown"));
       setRecording(false);
     }
-  }, []);
+  }, [createRecognition]);
 
   const stop = useCallback(() => {
+    shouldContinueRef.current = false;
     try { recRef.current?.stop(); } catch { /* noop */ }
     setRecording(false);
   }, []);
