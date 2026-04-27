@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Brain, Target, Sparkles, Plus, Trash2, CheckCircle2, Circle, ArrowRight, Flame, BookOpen } from "lucide-react";
+import { Brain, Target, Sparkles, Plus, Trash2, CheckCircle2, Circle, ArrowRight, Flame, BookOpen, Bell, Wand2, Loader2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/landing/Navbar";
 import { StatCard, MasteryRing } from "@/components/dashboard/StatCard";
