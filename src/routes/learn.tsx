@@ -45,6 +45,7 @@ function LearnPage() {
   const [messages, setMessages] = useState<(ChatMsg & { image?: string })[]>([]);
   const [signals, setSignals] = useState<Signal[]>([]);
   const [concepts, setConcepts] = useState<ExtractedConcept[]>([]);
+  const [extracting, setExtracting] = useState(false);
   const [showTeachBack, setShowTeachBack] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -112,6 +113,43 @@ function LearnPage() {
     streamReply([userMsg], t, "focused", true, () => setShowTeachBack(true));
   };
 
+  const mergeConcepts = (incoming: ExtractedConcept[]) => {
+    setConcepts((prev) => {
+      const rank = { strong: 3, weak: 2, gap: 1 } as const;
+      const map = new Map<string, ExtractedConcept>();
+      for (const c of prev) map.set(c.name, c);
+      for (const c of incoming) {
+        const existing = map.get(c.name);
+        if (!existing) { map.set(c.name, c); continue; }
+        const merged: ExtractedConcept = {
+          name: c.name,
+          confidence: rank[c.confidence] >= rank[existing.confidence] ? c.confidence : existing.confidence,
+          related: Array.from(new Set([...(existing.related ?? []), ...(c.related ?? [])])),
+        };
+        map.set(c.name, merged);
+      }
+      return Array.from(map.values());
+    });
+  };
+
+  const runExtraction = async (history: ChatMsg[], topicVal: string) => {
+    const transcript = history
+      .map((m) => `${m.role === "user" ? "Student" : "Tutor"}: ${m.content}`)
+      .join("\n");
+    if (!transcript.trim() || !topicVal) return;
+    setExtracting(true);
+    try {
+      const r = await fetch(RAG_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` },
+        body: JSON.stringify({ topic: topicVal, transcript }),
+      });
+      const j = await r.json();
+      if (Array.isArray(j.concepts) && j.concepts.length) mergeConcepts(j.concepts);
+    } catch { /* silent */ }
+    finally { setExtracting(false); }
+  };
+
   const streamReply = (
     history: ChatMsg[], topicVal: string, state: string, useRAG: boolean, onDone?: () => void
   ) => {
@@ -127,6 +165,9 @@ function LearnPage() {
       });
     }).then(() => {
       setSignals((s) => [...s, { ts: Date.now(), type: "receive", length: acc.length }]);
+      // Live concept extraction after every assistant turn
+      const fullHistory: ChatMsg[] = [...history, { role: "assistant", content: acc }];
+      runExtraction(fullHistory, topicVal);
       onDone?.();
     });
   };
@@ -139,7 +180,6 @@ function LearnPage() {
     setSignals((s) => [...s, { ts: Date.now(), type: "send", length: text.length }]);
     setShowTeachBack(false);
 
-    const isSocratic = phase === "socratic";
     streamReply(
       history.map(({ image: _i, ...m }) => m),
       topic,
@@ -147,18 +187,6 @@ function LearnPage() {
       true,
       () => { if (phase === "teaching") setShowTeachBack(true); },
     );
-
-    if (isSocratic) {
-      // Extract concepts from the cumulative student transcript
-      const transcript = history.filter(m => m.role === "user").map(m => m.content).join("\n");
-      fetch(RAG_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` },
-        body: JSON.stringify({ topic, transcript }),
-      }).then(r => r.json()).then((j) => {
-        if (Array.isArray(j.concepts)) setConcepts(j.concepts);
-      }).catch(() => { /* silent */ });
-    }
   };
 
   const enterSocratic = () => {
@@ -329,10 +357,16 @@ function LearnPage() {
         {/* RIGHT */}
         <aside className="hidden xl:flex flex-col w-[320px] shrink-0 border-l border-[var(--border)] bg-[var(--bg-secondary)]/40 backdrop-blur-xl">
           <div className="h-[60%] border-b border-[var(--border)] relative">
-            <div className="absolute top-2 right-2 z-10 text-[10px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">
-              Live Mind Map
+            <div className="absolute top-2 right-2 z-10 text-[10px] uppercase tracking-[0.2em] text-[var(--text-secondary)] flex items-center gap-1.5">
+              {extracting && (
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent-purple)] opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--accent-purple)]" />
+                </span>
+              )}
+              {extracting ? "Extracting…" : "Live Mind Map"}
             </div>
-            <MindMap concepts={concepts} />
+            <MindMap concepts={concepts} extracting={extracting} />
           </div>
           <div className="h-[40%]">
             <CognitivePanel state={cognitiveState} />

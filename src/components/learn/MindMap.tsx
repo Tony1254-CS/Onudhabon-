@@ -11,7 +11,7 @@ export type ExtractedConcept = { name: string; confidence: "strong" | "weak" | "
 const colorFor = (c: ExtractedConcept["confidence"]) =>
   c === "strong" ? "#F59E0B" : c === "weak" ? "#60A5FA" : "#EF4444";
 
-export function MindMap({ concepts }: { concepts: ExtractedConcept[] }) {
+export function MindMap({ concepts, extracting = false }: { concepts: ExtractedConcept[]; extracting?: boolean }) {
   const initial = useMemo(() => {
     const nodes: Node[] = concepts.map((c, i) => {
       const angle = (i / Math.max(concepts.length, 1)) * Math.PI * 2;
@@ -63,9 +63,12 @@ export function MindMap({ concepts }: { concepts: ExtractedConcept[] }) {
   const onConnect = useCallback((c: Connection) => setEdges((es) => addEdge(c, es)), [setEdges]);
 
   return (
-    <div className="relative w-full h-full">
+    <div
+      className="relative w-full h-full transition-shadow duration-500"
+      style={extracting ? { boxShadow: "inset 0 0 40px rgba(139,92,246,0.25)" } : undefined}
+    >
       <div className="absolute top-2 left-2 z-10 px-2 py-1 rounded-full bg-black/40 backdrop-blur border border-[var(--border)] text-[10px] font-bangla text-[var(--text-secondary)]">
-        {concepts.length} ধারণা চিহ্নিত
+        {concepts.length} ধারণা চিহ্নিত{extracting ? " • আপডেট হচ্ছে…" : ""}
       </div>
       {concepts.length === 0 ? (
         <motion.div
