@@ -16,6 +16,8 @@ import { AttentionWidget, AttentionConsentModal, type AttentionStatus } from "@/
 import { useChatStream, type ChatMsg } from "@/hooks/useChatStream";
 import { useCognitiveState, type Signal, type CognitiveState } from "@/hooks/useCognitiveState";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useSpeech } from "@/hooks/useSpeech";
+import { Volume2, VolumeX } from "lucide-react";
 import { cacheSession, idbPut } from "@/lib/idb";
 
 type LearnSearch = { topic?: string };
@@ -56,6 +58,8 @@ function LearnPage() {
   const attentionOverrideRef = useRef<CognitiveState | null>(null);
 
   const { send, streaming, provider } = useChatStream();
+  const { supported: ttsSupported, speaking, speak, cancel: cancelSpeak } = useSpeech();
+  const [autoSpeak, setAutoSpeak] = useState(false);
   const baseState = useCognitiveState(signals, phase === "socratic" ? "socratic" : "teaching");
   const cognitiveState: CognitiveState = attentionOverrideRef.current ?? baseState;
 
@@ -222,6 +226,7 @@ function LearnPage() {
       // Live concept extraction after every assistant turn
       const fullHistory: ChatMsg[] = [...history, { role: "assistant", content: acc }];
       runExtraction(fullHistory, topicVal);
+      if (autoSpeak && acc.trim()) speak(acc, "bn-BD");
       onDone?.();
     });
   };
@@ -307,6 +312,23 @@ function LearnPage() {
                 <h2 className="font-bangla text-sm truncate">{topic}</h2>
               </div>
               <div className="flex items-center gap-2">
+                {ttsSupported && (
+                  <button
+                    onClick={() => {
+                      if (autoSpeak) { cancelSpeak(); setAutoSpeak(false); }
+                      else setAutoSpeak(true);
+                    }}
+                    title={autoSpeak ? "অটো-ভয়েস বন্ধ করো" : "AI উত্তর শুনতে চালু করো"}
+                    className={`p-1.5 rounded-full border text-xs flex items-center gap-1 transition-all ${
+                      autoSpeak
+                        ? "bg-[var(--accent-blue)]/15 border-[var(--accent-blue)]/50 text-[var(--accent-cold-blue)]"
+                        : "bg-white/[0.04] border-[var(--border)] text-[var(--text-secondary)] hover:border-white/20"
+                    }`}
+                  >
+                    {autoSpeak ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+                    <span className="hidden sm:inline pr-1">{speaking ? "বলছি…" : autoSpeak ? "Voice On" : "Voice Off"}</span>
+                  </button>
+                )}
                 {provider && (
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.04] border border-[var(--border)] text-[var(--text-secondary)]">
                     {provider}
