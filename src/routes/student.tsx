@@ -77,7 +77,7 @@ function StudentDashboard() {
       setSessions((ss || []) as Session[]);
       setGoals((gs || []) as Goal[]);
       setNotifications((ns || []) as Notification[]);
-      setPlans((pp || []) as Plan[]);
+      setPlans(((pp || []) as unknown) as Plan[]);
       setLoading(false);
     })();
     return () => { mounted = false; };
