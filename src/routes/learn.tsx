@@ -19,6 +19,7 @@ import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useSpeech } from "@/hooks/useSpeech";
 import { Volume2, VolumeX } from "lucide-react";
 import { cacheSession, idbPut } from "@/lib/idb";
+import { toast } from "sonner";
 
 type LearnSearch = { topic?: string };
 
@@ -58,7 +59,7 @@ function LearnPage() {
   const attentionOverrideRef = useRef<CognitiveState | null>(null);
 
   const { send, streaming, provider } = useChatStream();
-  const { supported: ttsSupported, speaking, speak, cancel: cancelSpeak } = useSpeech();
+  const { supported: ttsSupported, speaking, speak, cancel: cancelSpeak, hasBanglaVoice } = useSpeech();
   const [autoSpeak, setAutoSpeak] = useState(false);
   const baseState = useCognitiveState(signals, phase === "socratic" ? "socratic" : "teaching");
   const cognitiveState: CognitiveState = attentionOverrideRef.current ?? baseState;
@@ -226,8 +227,23 @@ function LearnPage() {
       // Live concept extraction after every assistant turn
       const fullHistory: ChatMsg[] = [...history, { role: "assistant", content: acc }];
       runExtraction(fullHistory, topicVal);
-      if (autoSpeak && acc.trim()) speak(acc, "bn-BD");
+      if (autoSpeak && acc.trim()) {
+        speak(acc, "bn-BD").then((ok) => {
+          if (!ok) toast.error("এই ডিভাইসে বাংলা ভয়েস প্লেব্যাক শুরু হয়নি।");
+        });
+      }
       onDone?.();
+    });
+  };
+
+  const playAssistantSpeech = (text: string) => {
+    if (speaking) {
+      cancelSpeak();
+      return;
+    }
+    speak(text, "bn-BD").then((ok) => {
+      if (!ok) toast.error("বাংলা Text-to-Speech এই ব্রাউজারে এখনো প্রস্তুত নয়।");
+      else if (!hasBanglaVoice) toast.message("বাংলা ভয়েস না থাকায় কাছাকাছি সিস্টেম ভয়েস ব্যবহার করা হচ্ছে।");
     });
   };
 
@@ -316,9 +332,12 @@ function LearnPage() {
                   <button
                     onClick={() => {
                       if (autoSpeak) { cancelSpeak(); setAutoSpeak(false); }
-                      else setAutoSpeak(true);
+                      else {
+                        setAutoSpeak(true);
+                        if (!hasBanglaVoice) toast.message("এই ডিভাইসে native বাংলা voice নেই, তাই fallback voice ব্যবহার হবে।");
+                      }
                     }}
-                    title={autoSpeak ? "অটো-ভয়েস বন্ধ করো" : "AI উত্তর শুনতে চালু করো"}
+                    title={autoSpeak ? "অটো-ভয়েস বন্ধ করো" : hasBanglaVoice ? "AI উত্তর বাংলায় শুনতে চালু করো" : "AI উত্তর fallback voice-এ শুনতে চালু করো"}
                     className={`p-1.5 rounded-full border text-xs flex items-center gap-1 transition-all ${
                       autoSpeak
                         ? "bg-[var(--accent-blue)]/15 border-[var(--accent-blue)]/50 text-[var(--accent-cold-blue)]"
@@ -367,6 +386,9 @@ function LearnPage() {
                       key={i}
                       msg={m}
                       streaming={streaming && i === messages.length - 1 && m.role === "assistant"}
+                      canSpeak={ttsSupported}
+                      speaking={speaking}
+                      onSpeak={playAssistantSpeech}
                     />
                   ))}
                   {streaming && messages[messages.length - 1]?.role !== "assistant" && <TypingDots />}
