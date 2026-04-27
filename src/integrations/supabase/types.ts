@@ -74,6 +74,36 @@ export type Database = {
         }
         Relationships: []
       }
+      learning_goals: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          status: string
+          target_date: string | null
+          topic: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          target_date?: string | null
+          topic: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          target_date?: string | null
+          topic?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           class_level: string | null
