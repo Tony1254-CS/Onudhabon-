@@ -69,6 +69,23 @@ function LearnPage() {
     return () => { mounted = false; sub.subscription.unsubscribe(); };
   }, [navigate]);
 
+  // Auto-start teaching from ?topic= deep link (e.g. from Galaxy)
+  useEffect(() => {
+    if (authed && search.topic && phase === "topic") {
+      startTeaching(search.topic);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed, search.topic]);
+
+  // Attention -> cognitive state override
+  useEffect(() => {
+    if (!attentionEnabled) { attentionOverrideRef.current = null; return; }
+    if (attentionStatus === "no-face") attentionOverrideRef.current = "disengaged";
+    else if (attentionStatus === "looking-away") attentionOverrideRef.current = "confused";
+    else if (attentionStatus === "focused") attentionOverrideRef.current = "focused";
+    else attentionOverrideRef.current = null;
+  }, [attentionEnabled, attentionStatus]);
+
   // autoscroll
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
