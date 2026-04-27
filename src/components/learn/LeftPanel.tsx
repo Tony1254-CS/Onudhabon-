@@ -35,10 +35,10 @@ function MasteryRing({ value, color }: { value: number; color: string }) {
 }
 
 export function LeftPanel({
-  topic, onTopic, nodes,
-}: { topic: string; onTopic: (t: string) => void; nodes: ConceptNode[] }) {
+  topic, onTopic, nodes, mobile = false,
+}: { topic: string; onTopic: (t: string) => void; nodes: ConceptNode[]; mobile?: boolean }) {
   return (
-    <aside className="hidden lg:flex flex-col w-[280px] shrink-0 border-r border-[var(--border)] bg-[var(--bg-secondary)]/40 backdrop-blur-xl">
+    <aside className={mobile ? "flex flex-col w-full h-full" : "hidden lg:flex flex-col w-[280px] shrink-0 border-r border-[var(--border)] bg-[var(--bg-secondary)]/40 backdrop-blur-xl"}>
       <div className="p-5 border-b border-[var(--border)]">
         <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-secondary)] mb-3">Suggested Topics</p>
         <div className="flex flex-wrap gap-1.5">
