@@ -65,15 +65,15 @@ export function AttentionWidget({
           videoRef.current.srcObject = stream;
           await videoRef.current.play().catch(() => {});
         }
-        faceapiMod = await loadAttentionEngine();
+        engine = await loadAttentionEngine();
         if (cancelled) return;
         setStatus("no-face");
 
         const tick = async () => {
-          if (cancelled || !videoRef.current || !faceapiMod) return;
+          if (cancelled || !videoRef.current || !engine) return;
           let snap: AttentionSnapshot;
           try {
-            snap = await detectAttention(faceapiMod, videoRef.current);
+            snap = await detectAttention(engine, videoRef.current);
           } catch { snap = { faceDetected: false, lookingAway: false, centerOffset: 1 }; }
           const now = Date.now();
           let next: AttentionStatus = "no-face";
