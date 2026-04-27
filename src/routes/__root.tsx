@@ -110,6 +110,14 @@ function RootComponent() {
       <OfflineBanner visible={!online} />
       <Outlet />
       <PWAInstallPrompt />
+      <Toaster
+        position="top-right"
+        theme="dark"
+        richColors
+        closeButton
+        visibleToasts={3}
+        duration={4000}
+      />
     </>
   );
 }
