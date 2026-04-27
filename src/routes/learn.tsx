@@ -104,9 +104,46 @@ function LearnPage() {
     emotional: c.confidence === "strong" ? "gold" : c.confidence === "weak" ? "cold-blue" : "fragile",
   })), [concepts]);
 
-  const startTeaching = (t: string) => {
+  const confidenceToMastery = (c: ExtractedConcept["confidence"]) =>
+    c === "strong" ? 1 : c === "weak" ? 0.5 : 0.15;
+  const confidenceToEmotional = (c: ExtractedConcept["confidence"]) =>
+    c === "strong" ? "gold" : c === "weak" ? "cold-blue" : "fragile";
+
+  const loadConceptsForTopic = async (t: string) => {
+    if (!userId || !online) return;
+    const { data } = await supabase
+      .from("concept_nodes")
+      .select("concept, mastery_level, emotional_tag")
+      .eq("user_id", userId)
+      .eq("subject", t);
+    if (!data?.length) return;
+    const restored: ExtractedConcept[] = data.map((r) => ({
+      name: r.concept,
+      confidence: (r.mastery_level ?? 0) >= 0.9 ? "strong" : (r.mastery_level ?? 0) >= 0.4 ? "weak" : "gap",
+    }));
+    setConcepts(restored);
+  };
+
+  const persistConcepts = async (topicVal: string, items: ExtractedConcept[]) => {
+    if (!userId || !online || !topicVal || !items.length) return;
+    const rows = items.map((c) => ({
+      user_id: userId,
+      concept: c.name,
+      subject: topicVal,
+      mastery_level: confidenceToMastery(c.confidence),
+      emotional_tag: confidenceToEmotional(c.confidence),
+      last_reviewed: new Date().toISOString(),
+    }));
+    await supabase
+      .from("concept_nodes")
+      .upsert(rows, { onConflict: "user_id,subject,concept" });
+  };
+
+  const startTeaching = async (t: string) => {
     setTopic(t);
     setPhase("teaching");
+    setConcepts([]);
+    await loadConceptsForTopic(t);
     const userMsg: ChatMsg = { role: "user", content: `আমাকে "${t}" সম্পর্কে শেখাও।` };
     setMessages([userMsg]);
     setSignals((s) => [...s, { ts: Date.now(), type: "send", length: userMsg.content.length }]);
@@ -145,7 +182,10 @@ function LearnPage() {
         body: JSON.stringify({ topic: topicVal, transcript }),
       });
       const j = await r.json();
-      if (Array.isArray(j.concepts) && j.concepts.length) mergeConcepts(j.concepts);
+      if (Array.isArray(j.concepts) && j.concepts.length) {
+        mergeConcepts(j.concepts);
+        persistConcepts(topicVal, j.concepts);
+      }
     } catch { /* silent */ }
     finally { setExtracting(false); }
   };
