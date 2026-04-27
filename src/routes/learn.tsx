@@ -32,6 +32,7 @@ const KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 function LearnPage() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -43,8 +44,15 @@ function LearnPage() {
   const [showTeachBack, setShowTeachBack] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Attention engine state
+  const [attentionEnabled, setAttentionEnabled] = useState(false);
+  const [showConsent, setShowConsent] = useState(false);
+  const [attentionStatus, setAttentionStatus] = useState<AttentionStatus>("off");
+  const attentionOverrideRef = useRef<CognitiveState | null>(null);
+
   const { send, streaming, provider } = useChatStream();
-  const cognitiveState = useCognitiveState(signals, phase === "socratic" ? "socratic" : "teaching");
+  const baseState = useCognitiveState(signals, phase === "socratic" ? "socratic" : "teaching");
+  const cognitiveState: CognitiveState = attentionOverrideRef.current ?? baseState;
 
   // auth gate
   useEffect(() => {
