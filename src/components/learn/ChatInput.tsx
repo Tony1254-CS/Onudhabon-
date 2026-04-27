@@ -4,8 +4,8 @@ import { Mic, MicOff, ImageIcon, Send, X } from "lucide-react";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 
 export function ChatInput({
-  onSend, disabled, placeholder,
-}: { onSend: (text: string, image?: string) => void; disabled?: boolean; placeholder?: string }) {
+  onSend, disabled, placeholder, voiceDisabled, voiceDisabledMessage,
+}: { onSend: (text: string, image?: string) => void; disabled?: boolean; placeholder?: string; voiceDisabled?: boolean; voiceDisabledMessage?: string }) {
   const [text, setText] = useState("");
   const [image, setImage] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
