@@ -4,8 +4,8 @@ import { Mic, MicOff, ImageIcon, Send, X } from "lucide-react";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 
 export function ChatInput({
-  onSend, disabled, placeholder,
-}: { onSend: (text: string, image?: string) => void; disabled?: boolean; placeholder?: string }) {
+  onSend, disabled, placeholder, voiceDisabled, voiceDisabledMessage,
+}: { onSend: (text: string, image?: string) => void; disabled?: boolean; placeholder?: string; voiceDisabled?: boolean; voiceDisabledMessage?: string }) {
   const [text, setText] = useState("");
   const [image, setImage] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -61,8 +61,9 @@ export function ChatInput({
 
         {supported && (
           <motion.button
-            onClick={recording ? stop : start}
-            className="shrink-0 p-2.5 rounded-xl border transition-all relative"
+            onClick={() => { if (voiceDisabled) return; recording ? stop() : start(); }}
+            disabled={voiceDisabled}
+            className="shrink-0 p-2.5 rounded-xl border transition-all relative disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
               borderColor: recording ? "rgba(239,68,68,0.6)" : "var(--border)",
               background: recording ? "rgba(239,68,68,0.1)" : "transparent",
@@ -70,7 +71,7 @@ export function ChatInput({
             }}
             animate={recording ? { boxShadow: ["0 0 0 0 rgba(239,68,68,0.4)", "0 0 0 12px rgba(239,68,68,0)"] } : {}}
             transition={recording ? { duration: 1.4, repeat: Infinity } : {}}
-            title={recording ? "রেকর্ডিং বন্ধ করো" : "ভয়েস ইনপুট"}
+            title={voiceDisabled ? (voiceDisabledMessage || "ভয়েস ইনপুটের জন্য সংযোগ প্রয়োজন") : (recording ? "রেকর্ডিং বন্ধ করো" : "ভয়েস ইনপুট")}
           >
             {recording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
           </motion.button>

@@ -14,6 +14,8 @@ import { ResultCard } from "@/components/learn/ResultCard";
 import { AttentionWidget, AttentionConsentModal, type AttentionStatus } from "@/components/learn/AttentionWidget";
 import { useChatStream, type ChatMsg } from "@/hooks/useChatStream";
 import { useCognitiveState, type Signal, type CognitiveState } from "@/hooks/useCognitiveState";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { cacheSession, idbPut } from "@/lib/idb";
 
 type LearnSearch = { topic?: string };
 
@@ -33,6 +35,7 @@ const KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 function LearnPage() {
   const navigate = useNavigate();
   const search = Route.useSearch();
+  const online = useOnlineStatus();
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -169,17 +172,23 @@ function LearnPage() {
 
   const finish = async () => {
     setPhase("result");
-    // Persist session
-    if (userId) {
-      const masteryScore = concepts.length === 0 ? 0 :
-        concepts.filter(c => c.confidence === "strong").length / concepts.length;
+    const masteryScore = concepts.length === 0 ? 0 :
+      concepts.filter(c => c.confidence === "strong").length / concepts.length;
+    const sessionRecord = {
+      topic, subject: null, cognitive_state: cognitiveState,
+      mastery_score: masteryScore, messages, concepts,
+      created_at: new Date().toISOString(),
+    };
+    // Always cache locally for offline access
+    await cacheSession(sessionRecord);
+    await idbPut("concept_nodes", `topic_${topic}`, concepts);
+    if (userId && online) {
       await supabase.from("sessions").insert({
         user_id: userId,
         topic, subject: null, cognitive_state: cognitiveState,
         mastery_score: masteryScore,
         messages: messages as any,
       });
-      // Persist concept nodes
       for (const c of concepts) {
         await supabase.from("concept_nodes").insert({
           user_id: userId,
@@ -274,10 +283,12 @@ function LearnPage() {
                       >
                         <button
                           onClick={enterSocratic}
-                          className="px-6 py-3 rounded-full bg-[var(--accent-purple)]/15 border border-[var(--accent-purple)]/50 text-[var(--accent-purple)] font-bangla hover:bg-[var(--accent-purple)]/25 transition-all"
+                          disabled={!online}
+                          title={!online ? "সংযোগ ফিরলে Socratic মোড চালু হবে" : undefined}
+                          className="px-6 py-3 rounded-full bg-[var(--accent-purple)]/15 border border-[var(--accent-purple)]/50 text-[var(--accent-purple)] font-bangla hover:bg-[var(--accent-purple)]/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                           style={{ boxShadow: "0 0 30px rgba(139,92,246,0.3)" }}
                         >
-                          এখন তুমি আমাকে বোঝাও →
+                          {online ? "এখন তুমি আমাকে বোঝাও →" : "🔌 সংযোগ ফিরলে Socratic মোড চালু হবে"}
                         </button>
                       </motion.div>
                     )}
@@ -306,6 +317,8 @@ function LearnPage() {
                 onSend={onUserSend}
                 disabled={streaming || phase === "result"}
                 placeholder={phase === "socratic" ? "তোমার ব্যাখ্যা লেখো বা বলো…" : "আরো প্রশ্ন করো…"}
+                voiceDisabled={!online}
+                voiceDisabledMessage="ভয়েস ইনপুটের জন্য সংযোগ প্রয়োজন"
               />
             </>
           )}
