@@ -116,7 +116,7 @@ function LearnPage() {
       .select("concept, mastery_level, emotional_tag")
       .eq("user_id", userId)
       .eq("subject", t);
-    if (!data?.length) return;
+    if (!data) return;
     const restored: ExtractedConcept[] = data.map((r) => ({
       name: r.concept,
       confidence: (r.mastery_level ?? 0) >= 0.9 ? "strong" : (r.mastery_level ?? 0) >= 0.4 ? "weak" : "gap",
