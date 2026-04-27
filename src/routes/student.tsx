@@ -522,10 +522,13 @@ function GoalItem({ goal, onToggle, onDelete }: { goal: Goal; onToggle: (g: Goal
   );
 }
 
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+function Panel({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-xl">
-      <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white/70">{title}</h2>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-white/70">{title}</h2>
+        {action}
+      </div>
       {children}
     </section>
   );
