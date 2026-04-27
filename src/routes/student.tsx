@@ -33,7 +33,11 @@ function StudentDashboard() {
   const [concepts, setConcepts] = useState<Concept[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [generatingPlan, setGeneratingPlan] = useState(false);
+  const [showInbox, setShowInbox] = useState(false);
 
   const [newGoal, setNewGoal] = useState("");
   const [newGoalDate, setNewGoalDate] = useState("");
