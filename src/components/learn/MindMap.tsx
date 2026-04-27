@@ -11,7 +11,7 @@ export type ExtractedConcept = { name: string; confidence: "strong" | "weak" | "
 const colorFor = (c: ExtractedConcept["confidence"]) =>
   c === "strong" ? "#F59E0B" : c === "weak" ? "#60A5FA" : "#EF4444";
 
-export function MindMap({ concepts }: { concepts: ExtractedConcept[] }) {
+export function MindMap({ concepts, extracting = false }: { concepts: ExtractedConcept[]; extracting?: boolean }) {
   const initial = useMemo(() => {
     const nodes: Node[] = concepts.map((c, i) => {
       const angle = (i / Math.max(concepts.length, 1)) * Math.PI * 2;
