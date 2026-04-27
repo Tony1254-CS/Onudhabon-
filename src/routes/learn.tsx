@@ -116,7 +116,7 @@ function LearnPage() {
       .select("concept, mastery_level, emotional_tag")
       .eq("user_id", userId)
       .eq("subject", t);
-    if (!data?.length) return;
+    if (!data) return;
     const restored: ExtractedConcept[] = data.map((r) => ({
       name: r.concept,
       confidence: (r.mastery_level ?? 0) >= 0.9 ? "strong" : (r.mastery_level ?? 0) >= 0.4 ? "weak" : "gap",
@@ -140,15 +140,17 @@ function LearnPage() {
   };
 
   const deleteConcept = async (name: string) => {
+    // Optimistic local removal
     setConcepts((prev) => prev.filter((c) => c.name !== name));
-    if (userId && online && topic) {
-      await supabase
-        .from("concept_nodes")
-        .delete()
-        .eq("user_id", userId)
-        .eq("subject", topic)
-        .eq("concept", name);
-    }
+    if (!userId || !online || !topic) return;
+    await supabase
+      .from("concept_nodes")
+      .delete()
+      .eq("user_id", userId)
+      .eq("subject", topic)
+      .eq("concept", name);
+    // Re-sync with server so the map matches Supabase exactly
+    await loadConceptsForTopic(topic);
   };
 
   const startTeaching = async (t: string) => {
