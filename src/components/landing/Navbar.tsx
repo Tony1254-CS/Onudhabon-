@@ -7,6 +7,7 @@ const links = [
   { to: "/learn", label: "Learn" },
   { to: "/galaxy", label: "Galaxy" },
   { to: "/dashboard", label: "Dashboard" },
+  { to: "/about", label: "About" },
 ] as const;
 
 export function Navbar() {
