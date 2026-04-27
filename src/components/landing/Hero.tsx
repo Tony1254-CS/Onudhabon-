@@ -70,7 +70,7 @@ export function Hero() {
           className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass text-xs text-[var(--text-secondary)] mb-8"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-cold-blue)] animate-pulse" />
-          A Cognitive Flow Learning System
+          Live AI · powered by Gemini · NCTB-grounded
         </motion.div>
 
         <motion.h1
@@ -104,19 +104,19 @@ export function Hero() {
           className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
         >
           <Link
-            to="/signup"
+            to="/learn"
             className="group inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[var(--accent-blue)] text-white font-semibold animate-pulse-glow hover:bg-[var(--accent-cold-blue)] transition-all hover:scale-[1.03] active:scale-[0.98] font-bangla"
           >
-            শুরু করো
+            লাইভ AI দিয়ে শেখো
             <ArrowRight size={18} className="transition-transform group-hover:translate-x-0.5" />
           </Link>
-          <a
-            href="#how"
+          <Link
+            to="/demo"
             className="group inline-flex items-center gap-2 px-7 py-3.5 rounded-full border border-white/15 text-[var(--text-primary)] hover:bg-white/[0.04] hover:border-white/30 transition-all font-bangla"
           >
             <PlayCircle size={18} />
-            দেখো কীভাবে কাজ করে
-          </a>
+            ৬০-সেকেন্ডের ট্যুর দেখো
+          </Link>
         </motion.div>
 
         <motion.div
