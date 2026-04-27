@@ -63,9 +63,12 @@ export function MindMap({ concepts, extracting = false }: { concepts: ExtractedC
   const onConnect = useCallback((c: Connection) => setEdges((es) => addEdge(c, es)), [setEdges]);
 
   return (
-    <div className="relative w-full h-full">
+    <div
+      className="relative w-full h-full transition-shadow duration-500"
+      style={extracting ? { boxShadow: "inset 0 0 40px rgba(139,92,246,0.25)" } : undefined}
+    >
       <div className="absolute top-2 left-2 z-10 px-2 py-1 rounded-full bg-black/40 backdrop-blur border border-[var(--border)] text-[10px] font-bangla text-[var(--text-secondary)]">
-        {concepts.length} ধারণা চিহ্নিত
+        {concepts.length} ধারণা চিহ্নিত{extracting ? " • আপডেট হচ্ছে…" : ""}
       </div>
       {concepts.length === 0 ? (
         <motion.div
