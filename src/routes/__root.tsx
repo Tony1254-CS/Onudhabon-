@@ -1,6 +1,9 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 import appCss from "../styles.css?url";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { OfflineBanner, PWAInstallPrompt } from "@/components/pwa/PWAComponents";
 
 function NotFoundComponent() {
   return (
@@ -39,10 +42,10 @@ export const Route = createRootRoute({
       { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
+      { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.json" },
+      { rel: "icon", type: "image/png", sizes: "192x192", href: "/icon-192.png" },
+      { rel: "apple-touch-icon", href: "/icon-192.png" },
     ],
   }),
   shellComponent: RootShell,
@@ -65,5 +68,32 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
-  return <Outlet />;
+  const online = useOnlineStatus();
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    // Guard SW: only register in production AND not inside Lovable preview iframe
+    const inIframe = (() => { try { return window.self !== window.top; } catch { return true; } })();
+    const previewHost = window.location.hostname.includes("lovableproject.com")
+      || window.location.hostname.includes("lovable.app")
+      || window.location.hostname.includes("id-preview--");
+    if (inIframe || previewHost || import.meta.env.DEV) {
+      // Clean up any stale SWs in preview/dev to avoid stale-cache loops
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister()));
+      }
+      return;
+    }
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => null);
+    }
+  }, []);
+
+  return (
+    <>
+      <OfflineBanner visible={!online} />
+      <Outlet />
+      <PWAInstallPrompt />
+    </>
+  );
 }
