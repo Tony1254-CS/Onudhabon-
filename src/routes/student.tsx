@@ -65,21 +65,25 @@ function StudentDashboard() {
     let mounted = true;
     (async () => {
       setLoading(true);
-      const [{ data: cn }, { data: ss }, { data: gs }] = await Promise.all([
+      const [{ data: cn }, { data: ss }, { data: gs }, { data: ns }, { data: pp }] = await Promise.all([
         supabase.from("concept_nodes").select("*").eq("user_id", userId),
         supabase.from("sessions").select("id, topic, subject, mastery_score, cognitive_state, created_at, messages").eq("user_id", userId).order("created_at", { ascending: false }).limit(50),
         supabase.from("learning_goals").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
+        supabase.from("notifications").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
+        supabase.from("practice_plans").select("*").eq("user_id", userId).eq("status", "active").order("created_at", { ascending: false }).limit(3),
       ]);
       if (!mounted) return;
       setConcepts((cn || []) as Concept[]);
       setSessions((ss || []) as Session[]);
       setGoals((gs || []) as Goal[]);
+      setNotifications((ns || []) as Notification[]);
+      setPlans((pp || []) as Plan[]);
       setLoading(false);
     })();
     return () => { mounted = false; };
   }, [userId]);
 
-  const stats = useMemo(() => {
+  const unreadCount = useMemo(() => notifications.filter((n) => !n.read_at).length, [notifications]);
     const total = concepts.length;
     const masteries = concepts.map((c) => c.mastery_level ?? 0);
     const avg = masteries.length ? masteries.reduce((a, b) => a + b, 0) / masteries.length : 0;
