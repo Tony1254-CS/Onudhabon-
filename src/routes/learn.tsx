@@ -258,16 +258,8 @@ function LearnPage() {
         mastery_score: masteryScore,
         messages: messages as any,
       });
-      for (const c of concepts) {
-        await supabase.from("concept_nodes").insert({
-          user_id: userId,
-          concept: c.name,
-          subject: topic,
-          mastery_level: c.confidence === "strong" ? 1 : c.confidence === "weak" ? 0.5 : 0.15,
-          emotional_tag: c.confidence === "strong" ? "gold" : c.confidence === "weak" ? "cold-blue" : "fragile",
-          last_reviewed: new Date().toISOString(),
-        });
-      }
+      // Final upsert ensures concepts persisted even if extraction calls were dropped
+      await persistConcepts(topic, concepts);
     }
   };
 
