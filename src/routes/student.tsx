@@ -87,11 +87,12 @@ function StudentDashboard() {
 
   const stats = useMemo(() => {
     const total = concepts.length;
-    const masteries = concepts.map((c) => c.mastery_level ?? 0);
-    const avg = masteries.length ? masteries.reduce((a, b) => a + b, 0) / masteries.length : 0;
-    const strong = concepts.filter((c) => (c.mastery_level ?? 0) >= 0.7).length;
-    const subjects = new Set(concepts.map((c) => c.subject).filter(Boolean)).size;
-    return { total, avg, strong, subjects };
+    const ml = concepts.map((c) => c.mastery_level || 0);
+    const avg = ml.length ? ml.reduce((a, b) => a + b, 0) / ml.length : 0;
+    const strong = concepts.filter((c) => (c.mastery_level || 0) >= 0.7).length;
+    const subjectSet = new Set<string>();
+    for (const c of concepts) if (c.subject) subjectSet.add(c.subject);
+    return { total, avg, strong, subjects: subjectSet.size };
   }, [concepts]);
 
   // Streak — consecutive days with at least one session
