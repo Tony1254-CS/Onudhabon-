@@ -45,6 +45,7 @@ function LearnPage() {
   const [messages, setMessages] = useState<(ChatMsg & { image?: string })[]>([]);
   const [signals, setSignals] = useState<Signal[]>([]);
   const [concepts, setConcepts] = useState<ExtractedConcept[]>([]);
+  const [extracting, setExtracting] = useState(false);
   const [showTeachBack, setShowTeachBack] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
