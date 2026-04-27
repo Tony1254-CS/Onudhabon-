@@ -16,6 +16,8 @@ import { AttentionWidget, AttentionConsentModal, type AttentionStatus } from "@/
 import { useChatStream, type ChatMsg } from "@/hooks/useChatStream";
 import { useCognitiveState, type Signal, type CognitiveState } from "@/hooks/useCognitiveState";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useSpeech } from "@/hooks/useSpeech";
+import { Volume2, VolumeX } from "lucide-react";
 import { cacheSession, idbPut } from "@/lib/idb";
 
 type LearnSearch = { topic?: string };
@@ -56,6 +58,8 @@ function LearnPage() {
   const attentionOverrideRef = useRef<CognitiveState | null>(null);
 
   const { send, streaming, provider } = useChatStream();
+  const { supported: ttsSupported, speaking, speak, cancel: cancelSpeak } = useSpeech();
+  const [autoSpeak, setAutoSpeak] = useState(false);
   const baseState = useCognitiveState(signals, phase === "socratic" ? "socratic" : "teaching");
   const cognitiveState: CognitiveState = attentionOverrideRef.current ?? baseState;
 
