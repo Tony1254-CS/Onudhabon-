@@ -16,6 +16,9 @@ export const Route = createFileRoute("/student")({
 type Concept = { id: string; concept: string; subject: string | null; mastery_level: number | null; last_reviewed: string | null; created_at: string };
 type Session = { id: string; topic: string | null; subject: string | null; mastery_score: number | null; cognitive_state: string | null; created_at: string; messages: unknown };
 type Goal = { id: string; topic: string; target_date: string | null; status: string; notes: string | null; created_at: string };
+type Notification = { id: string; type: string; title: string; body: string | null; goal_id: string | null; read_at: string | null; created_at: string };
+type PlanStep = { concept: string; title: string; description: string; duration_min: number };
+type Plan = { id: string; title: string; steps: PlanStep[]; status: string; created_at: string };
 
 const STATE_EMOJI: Record<string, string> = {
   focused: "🎯", confused: "😕", overloaded: "🥵", disengaged: "💤", "mastery-ready": "✨",
