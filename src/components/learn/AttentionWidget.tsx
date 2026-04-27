@@ -51,7 +51,7 @@ export function AttentionWidget({
 
     let cancelled = false;
     let interval: ReturnType<typeof setInterval> | null = null;
-    let faceapiMod: Awaited<ReturnType<typeof loadAttentionEngine>> | null = null;
+    let engine: Awaited<ReturnType<typeof loadAttentionEngine>> | null = null;
 
     (async () => {
       setStatus("loading");
