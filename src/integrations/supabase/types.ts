@@ -14,7 +14,123 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      concept_nodes: {
+        Row: {
+          concept: string
+          created_at: string
+          emotional_tag: string | null
+          id: string
+          last_reviewed: string | null
+          mastery_level: number | null
+          subject: string | null
+          user_id: string
+        }
+        Insert: {
+          concept: string
+          created_at?: string
+          emotional_tag?: string | null
+          id?: string
+          last_reviewed?: string | null
+          mastery_level?: number | null
+          subject?: string | null
+          user_id: string
+        }
+        Update: {
+          concept?: string
+          created_at?: string
+          emotional_tag?: string | null
+          id?: string
+          last_reviewed?: string | null
+          mastery_level?: number | null
+          subject?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      demo_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          galaxy_state: Json | null
+          id: string
+          mind_map_data: Json | null
+          response_data: Json | null
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          galaxy_state?: Json | null
+          id?: string
+          mind_map_data?: Json | null
+          response_data?: Json | null
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          galaxy_state?: Json | null
+          id?: string
+          mind_map_data?: Json | null
+          response_data?: Json | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          class_level: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          role: string
+        }
+        Insert: {
+          class_level?: string | null
+          created_at?: string
+          full_name?: string | null
+          id: string
+          role?: string
+        }
+        Update: {
+          class_level?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          role?: string
+        }
+        Relationships: []
+      }
+      sessions: {
+        Row: {
+          cognitive_state: string | null
+          created_at: string
+          id: string
+          mastery_score: number | null
+          messages: Json | null
+          subject: string | null
+          topic: string | null
+          user_id: string
+        }
+        Insert: {
+          cognitive_state?: string | null
+          created_at?: string
+          id?: string
+          mastery_score?: number | null
+          messages?: Json | null
+          subject?: string | null
+          topic?: string | null
+          user_id: string
+        }
+        Update: {
+          cognitive_state?: string | null
+          created_at?: string
+          id?: string
+          mastery_score?: number | null
+          messages?: Json | null
+          subject?: string | null
+          topic?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
