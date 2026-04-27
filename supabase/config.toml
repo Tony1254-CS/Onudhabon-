@@ -1,1 +1,10 @@
 project_id = "zbtsoritfidedbkellrs"
+
+[functions.chat-completion]
+verify_jwt = false
+
+[functions.rag-query]
+verify_jwt = false
+
+[functions.extract-concepts]
+verify_jwt = false
