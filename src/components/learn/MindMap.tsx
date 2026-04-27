@@ -1,36 +1,77 @@
 import { useCallback, useEffect, useMemo } from "react";
 import ReactFlow, {
   Background, Controls, MiniMap, addEdge, useEdgesState, useNodesState,
-  type Node, type Edge, type Connection, MarkerType,
+  Handle, Position,
+  type Node, type Edge, type Connection, type NodeProps, MarkerType,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { motion } from "framer-motion";
+import { X } from "lucide-react";
 
 export type ExtractedConcept = { name: string; confidence: "strong" | "weak" | "gap"; related?: string[] };
 
 const colorFor = (c: ExtractedConcept["confidence"]) =>
   c === "strong" ? "#F59E0B" : c === "weak" ? "#60A5FA" : "#EF4444";
 
-export function MindMap({ concepts, extracting = false }: { concepts: ExtractedConcept[]; extracting?: boolean }) {
+type ConceptNodeData = {
+  label: string;
+  color: string;
+  onDelete?: (name: string) => void;
+};
+
+function ConceptNode({ data }: NodeProps<ConceptNodeData>) {
+  return (
+    <div
+      className="group relative font-bangla text-[11px] leading-none"
+      style={{
+        background: `${data.color}1a`,
+        border: `1.5px solid ${data.color}`,
+        color: "#F1F5F9",
+        padding: "6px 10px",
+        paddingRight: data.onDelete ? 22 : 10,
+        borderRadius: 14,
+        boxShadow: `0 0 14px ${data.color}66`,
+      }}
+    >
+      <Handle type="target" position={Position.Top} style={{ opacity: 0, pointerEvents: "none" }} />
+      {data.label}
+      {data.onDelete && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); data.onDelete?.(data.label); }}
+          aria-label={`Remove ${data.label}`}
+          title="Remove concept"
+          className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-black/70 border border-white/20 text-white/80 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-500/90 hover:text-white transition-opacity"
+        >
+          <X className="w-2.5 h-2.5" strokeWidth={3} />
+        </button>
+      )}
+      <Handle type="source" position={Position.Bottom} style={{ opacity: 0, pointerEvents: "none" }} />
+    </div>
+  );
+}
+
+const nodeTypes = { concept: ConceptNode };
+
+export function MindMap({
+  concepts,
+  extracting = false,
+  onDelete,
+}: {
+  concepts: ExtractedConcept[];
+  extracting?: boolean;
+  onDelete?: (name: string) => void;
+}) {
   const initial = useMemo(() => {
-    const nodes: Node[] = concepts.map((c, i) => {
+    const nodes: Node<ConceptNodeData>[] = concepts.map((c, i) => {
       const angle = (i / Math.max(concepts.length, 1)) * Math.PI * 2;
       const r = 110 + Math.min(40, concepts.length * 4);
       const color = colorFor(c.confidence);
       return {
         id: `n-${i}-${c.name}`,
+        type: "concept",
         position: { x: 150 + Math.cos(angle) * r, y: 130 + Math.sin(angle) * r },
-        data: { label: c.name },
-        style: {
-          background: `${color}1a`,
-          border: `1.5px solid ${color}`,
-          color: "#F1F5F9",
-          fontFamily: "Hind Siliguri, sans-serif",
-          fontSize: 11,
-          padding: "6px 10px",
-          borderRadius: 14,
-          boxShadow: `0 0 14px ${color}66`,
-        },
+        data: { label: c.name, color, onDelete },
       };
     });
     const edges: Edge[] = [];
@@ -50,7 +91,7 @@ export function MindMap({ concepts, extracting = false }: { concepts: ExtractedC
       });
     });
     return { nodes, edges };
-  }, [concepts]);
+  }, [concepts, onDelete]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initial.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges);
@@ -83,6 +124,7 @@ export function MindMap({ concepts, extracting = false }: { concepts: ExtractedC
         <ReactFlow
           nodes={nodes}
           edges={edges}
+          nodeTypes={nodeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
