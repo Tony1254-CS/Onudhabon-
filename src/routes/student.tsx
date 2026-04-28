@@ -293,6 +293,9 @@ function StudentDashboard() {
           <StatCard label="ধারাবাহিক দিন" value={streak} icon={Flame} accent="#EF4444" pulse={streak > 0} />
         </section>
 
+        {/* Mastered stars */}
+        <MasteredStars concepts={concepts} />
+
         {loading ? (
           <div className="grid h-64 place-items-center text-white/40">লোড হচ্ছে…</div>
         ) : (
