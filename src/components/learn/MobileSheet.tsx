@@ -33,14 +33,23 @@ export function MobileSheet({
             style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
           >
             {side === "bottom" && (
-              <div className="flex justify-center pt-2">
-                <div className="h-1 w-10 rounded-full bg-white/20" />
-              </div>
+              <button
+                onClick={onClose}
+                aria-label="close sheet"
+                className="flex justify-center pt-2 pb-1 -mx-1 group"
+              >
+                <div className="h-1.5 w-12 rounded-full bg-white/30 group-hover:bg-white/60 transition" />
+              </button>
             )}
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-              <span className="text-xs uppercase tracking-wider text-white/50">{title}</span>
-              <button onClick={onClose} aria-label="close" className="rounded-md p-1 text-white/60 hover:bg-white/10 hover:text-white">
-                <X className="h-4 w-4" />
+              <span className="text-xs uppercase tracking-wider text-white/60">{title}</span>
+              <button
+                onClick={onClose}
+                aria-label="close"
+                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-white/80 bg-white/[0.06] border border-white/15 hover:bg-white/15 hover:text-white transition active:scale-95"
+              >
+                <X className="h-3.5 w-3.5" />
+                <span>বন্ধ</span>
               </button>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto">{children}</div>
