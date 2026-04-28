@@ -210,7 +210,9 @@ function LearnPage() {
     streamReply([userMsg], t, "focused", true, () => setShowTeachBack(true));
   };
 
-  const mergeConcepts = (incoming: ExtractedConcept[]) => {
+  // mode = "merge" : take the higher confidence (used in teaching to grow the map without ever auto-mastering)
+  // mode = "verdict": authoritative — the AI Socratic verdict overwrites confidence (allows promotion to "strong" AND demotion).
+  const mergeConcepts = (incoming: ExtractedConcept[], mode: "merge" | "verdict" = "merge") => {
     setConcepts((prev) => {
       const rank = { strong: 3, weak: 2, gap: 1 } as const;
       const map = new Map<string, ExtractedConcept>();
@@ -218,18 +220,24 @@ function LearnPage() {
       for (const c of incoming) {
         const existing = map.get(c.name);
         if (!existing) { map.set(c.name, c); continue; }
-        const merged: ExtractedConcept = {
+        const nextConfidence =
+          mode === "verdict"
+            ? c.confidence
+            : rank[c.confidence] >= rank[existing.confidence] ? c.confidence : existing.confidence;
+        map.set(c.name, {
           name: c.name,
-          confidence: rank[c.confidence] >= rank[existing.confidence] ? c.confidence : existing.confidence,
+          confidence: nextConfidence,
           related: Array.from(new Set([...(existing.related ?? []), ...(c.related ?? [])])),
-        };
-        map.set(c.name, merged);
+        });
       }
       return Array.from(map.values());
     });
   };
 
-  const runExtraction = async (history: ChatMsg[], topicVal: string) => {
+  // Live mind-map extraction. In teaching mode we grow the map but DOWNGRADE any
+  // "strong" verdict from the generic extractor to "weak" — student hasn't proven
+  // mastery yet; only the Socratic evaluator can mint a gold star.
+  const runExtraction = async (history: ChatMsg[], topicVal: string, mode: Phase) => {
     const transcript = history
       .map((m) => `${m.role === "user" ? "Student" : "Tutor"}: ${m.content}`)
       .join("\n");
@@ -243,12 +251,39 @@ function LearnPage() {
       });
       const j = await r.json();
       if (Array.isArray(j.concepts) && j.concepts.length) {
-        mergeConcepts(j.concepts);
-        persistConcepts(topicVal, j.concepts);
+        const sanitized: ExtractedConcept[] = (j.concepts as ExtractedConcept[]).map((c) =>
+          mode === "teaching" && c.confidence === "strong" ? { ...c, confidence: "weak" } : c,
+        );
+        mergeConcepts(sanitized, "merge");
+        // Persist WITHOUT the mastery-burst side-effect for teaching mode (no "strong" present anyway).
+        persistConcepts(topicVal, sanitized);
       }
     } catch { /* silent */ }
     finally { setExtracting(false); }
   };
+
+  // Socratic AI mastery verdict — authoritative source for "mastered → galaxy star".
+  // Runs only on the student's OWN explanation (user turns), so the tutor's words
+  // can never accidentally promote a concept.
+  const runSocraticEvaluation = async (studentExplanation: string, topicVal: string) => {
+    if (!studentExplanation.trim() || !topicVal || !online) return;
+    setExtracting(true);
+    try {
+      const r = await fetch(EVAL_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` },
+        body: JSON.stringify({ topic: topicVal, studentExplanation }),
+      });
+      const j = await r.json();
+      if (Array.isArray(j.concepts) && j.concepts.length) {
+        const verdicts = j.concepts as ExtractedConcept[];
+        mergeConcepts(verdicts, "verdict");
+        persistConcepts(topicVal, verdicts);
+      }
+    } catch { /* silent */ }
+    finally { setExtracting(false); }
+  };
+
 
   const streamReply = (
     history: ChatMsg[], topicVal: string, state: string, useRAG: boolean, onDone?: () => void
