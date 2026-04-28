@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StudentRouteImport } from './routes/student'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LearnRouteImport } from './routes/learn'
 import { Route as GalaxyRouteImport } from './routes/galaxy'
@@ -27,6 +28,11 @@ const StudentRoute = StudentRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/galaxy': typeof GalaxyRoute
   '/learn': typeof LearnRoute
   '/login': typeof LoginRoute
+  '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/student': typeof StudentRoute
 }
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/galaxy': typeof GalaxyRoute
   '/learn': typeof LearnRoute
   '/login': typeof LoginRoute
+  '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/student': typeof StudentRoute
 }
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/galaxy': typeof GalaxyRoute
   '/learn': typeof LearnRoute
   '/login': typeof LoginRoute
+  '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/student': typeof StudentRoute
 }
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/galaxy'
     | '/learn'
     | '/login'
+    | '/settings'
     | '/signup'
     | '/student'
   fileRoutesByTo: FileRoutesByTo
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/galaxy'
     | '/learn'
     | '/login'
+    | '/settings'
     | '/signup'
     | '/student'
   id:
@@ -131,6 +142,7 @@ export interface FileRouteTypes {
     | '/galaxy'
     | '/learn'
     | '/login'
+    | '/settings'
     | '/signup'
     | '/student'
   fileRoutesById: FileRoutesById
@@ -143,6 +155,7 @@ export interface RootRouteChildren {
   GalaxyRoute: typeof GalaxyRoute
   LearnRoute: typeof LearnRoute
   LoginRoute: typeof LoginRoute
+  SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
   StudentRoute: typeof StudentRoute
 }
@@ -161,6 +174,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -223,6 +243,7 @@ const rootRouteChildren: RootRouteChildren = {
   GalaxyRoute: GalaxyRoute,
   LearnRoute: LearnRoute,
   LoginRoute: LoginRoute,
+  SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
   StudentRoute: StudentRoute,
 }
