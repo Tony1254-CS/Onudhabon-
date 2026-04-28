@@ -78,7 +78,33 @@ function GalaxyPage() {
 
   // Push stars when ready
   useEffect(() => {
-    if (galaxyRef.current && !loading) galaxyRef.current.setStars(stars);
+    if (galaxyRef.current && !loading) {
+      galaxyRef.current.setStars(stars);
+      // Drain mastery celebrations queued from /learn
+      const raw = localStorage.getItem("galaxy_celebrations");
+      if (raw) {
+        try {
+          const queue: string[] = JSON.parse(raw);
+          if (queue.length) {
+            const matched: GalaxyStar[] = [];
+            queue.forEach((entry) => {
+              const [subject, concept] = entry.split("::");
+              const found = stars.find(
+                (s) => s.concept === concept && (s.subject ?? "") === (subject ?? ""),
+              );
+              if (found) matched.push(found);
+            });
+            // Stagger celebrations
+            matched.slice(0, 5).forEach((s, i) => {
+              setTimeout(() => galaxyRef.current?.celebrateStar(s.id), 600 + i * 1400);
+            });
+            localStorage.removeItem("galaxy_celebrations");
+          }
+        } catch {
+          localStorage.removeItem("galaxy_celebrations");
+        }
+      }
+    }
   }, [stars, loading]);
 
   // Filter
