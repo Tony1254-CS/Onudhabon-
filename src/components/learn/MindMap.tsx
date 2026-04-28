@@ -1,37 +1,44 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import ReactFlow, {
   Background, Controls, MiniMap, addEdge, useEdgesState, useNodesState,
-  Handle, Position,
-  type Node, type Edge, type Connection, type NodeProps, MarkerType,
+  Handle, Position, ReactFlowProvider, useReactFlow,
+  type Node, type Edge, type Connection, type NodeProps, type NodeMouseHandler, MarkerType,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import { motion } from "framer-motion";
-import { X } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { X, Sparkles, Link2, Target } from "lucide-react";
 
 export type ExtractedConcept = { name: string; confidence: "strong" | "weak" | "gap"; related?: string[] };
 
 const colorFor = (c: ExtractedConcept["confidence"]) =>
   c === "strong" ? "#F59E0B" : c === "weak" ? "#60A5FA" : "#EF4444";
 
+const labelFor = (c: ExtractedConcept["confidence"]) =>
+  c === "strong" ? "শক্তিশালী" : c === "weak" ? "দুর্বল" : "ফাঁক";
+
 type ConceptNodeData = {
   label: string;
   color: string;
+  selected?: boolean;
   onDelete?: (name: string) => void;
 };
 
 function ConceptNode({ data }: NodeProps<ConceptNodeData>) {
   return (
     <div
-      className="group relative font-bangla text-[12px] leading-tight transition-transform hover:scale-[1.06]"
+      className="group relative font-bangla text-[12px] leading-tight transition-all duration-300 hover:scale-[1.06]"
       style={{
         background: `linear-gradient(135deg, ${data.color}26, ${data.color}0d)`,
-        border: `1.5px solid ${data.color}`,
+        border: `${data.selected ? 2 : 1.5}px solid ${data.color}`,
         color: "#F8FAFC",
         padding: "8px 14px",
         paddingRight: data.onDelete ? 26 : 14,
         borderRadius: 999,
-        boxShadow: `0 0 18px ${data.color}55, inset 0 0 12px ${data.color}1a`,
+        boxShadow: data.selected
+          ? `0 0 28px ${data.color}cc, inset 0 0 14px ${data.color}33`
+          : `0 0 18px ${data.color}55, inset 0 0 12px ${data.color}1a`,
         backdropFilter: "blur(6px)",
+        transform: data.selected ? "scale(1.08)" : undefined,
       }}
     >
       <Handle type="target" position={Position.Top} style={{ opacity: 0, pointerEvents: "none" }} />
@@ -60,7 +67,7 @@ function ConceptNode({ data }: NodeProps<ConceptNodeData>) {
 
 const nodeTypes = { concept: ConceptNode };
 
-export function MindMap({
+function MindMapInner({
   concepts,
   extracting = false,
   onDelete,
@@ -69,6 +76,9 @@ export function MindMap({
   extracting?: boolean;
   onDelete?: (name: string) => void;
 }) {
+  const { setCenter, getNode } = useReactFlow();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
   const initial = useMemo(() => {
     const nodes: Node<ConceptNodeData>[] = concepts.map((c, i) => {
       const angle = (i / Math.max(concepts.length, 1)) * Math.PI * 2;
@@ -104,11 +114,31 @@ export function MindMap({
   const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges);
 
   useEffect(() => {
-    setNodes(initial.nodes);
+    setNodes(initial.nodes.map((n) => ({ ...n, data: { ...n.data, selected: n.id === selectedId } })));
     setEdges(initial.edges);
-  }, [initial, setNodes, setEdges]);
+  }, [initial, selectedId, setNodes, setEdges]);
 
   const onConnect = useCallback((c: Connection) => setEdges((es) => addEdge(c, es)), [setEdges]);
+
+  const selectedConcept = useMemo(() => {
+    if (!selectedId) return null;
+    const idx = concepts.findIndex((_, i) => `n-${i}-${concepts[i].name}` === selectedId);
+    return idx >= 0 ? { concept: concepts[idx], index: idx } : null;
+  }, [selectedId, concepts]);
+
+  const focusNode = useCallback((id: string) => {
+    const node = getNode(id);
+    if (node) {
+      setCenter(node.position.x + 60, node.position.y + 20, { zoom: 1.5, duration: 800 });
+    }
+  }, [getNode, setCenter]);
+
+  const onNodeClick: NodeMouseHandler = useCallback((_, node) => {
+    setSelectedId(node.id);
+    focusNode(node.id);
+  }, [focusNode]);
+
+  const onPaneClick = useCallback(() => setSelectedId(null), []);
 
   return (
     <div
@@ -135,6 +165,8 @@ export function MindMap({
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onNodeClick={onNodeClick}
+          onPaneClick={onPaneClick}
           fitView
           fitViewOptions={{ padding: 0.2 }}
           proOptions={{ hideAttribution: true }}
@@ -150,6 +182,100 @@ export function MindMap({
           <MiniMap pannable zoomable className="!bg-black/60 !border !border-[var(--border)]" maskColor="rgba(8,11,20,0.85)" />
         </ReactFlow>
       )}
+
+      <AnimatePresence>
+        {selectedConcept && (
+          <motion.div
+            key={selectedId}
+            initial={{ x: "100%", opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: "100%", opacity: 0 }}
+            transition={{ type: "spring", damping: 26, stiffness: 240 }}
+            className="absolute top-0 right-0 h-full w-[280px] max-w-[80%] z-20 bg-black/70 backdrop-blur-xl border-l border-[var(--border)] p-4 overflow-y-auto font-bangla"
+            style={{ boxShadow: `-12px 0 40px ${colorFor(selectedConcept.concept.confidence)}33` }}
+          >
+            <div className="flex items-start justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2">
+                <span
+                  className="w-2.5 h-2.5 rounded-full"
+                  style={{
+                    background: colorFor(selectedConcept.concept.confidence),
+                    boxShadow: `0 0 10px ${colorFor(selectedConcept.concept.confidence)}`,
+                  }}
+                />
+                <span className="text-[10px] uppercase tracking-wider text-[var(--text-secondary)]">
+                  {labelFor(selectedConcept.concept.confidence)}
+                </span>
+              </div>
+              <button
+                onClick={() => setSelectedId(null)}
+                className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 text-white/70 flex items-center justify-center transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <h3 className="text-lg text-white font-semibold mb-3 text-balance leading-snug">
+              {selectedConcept.concept.name}
+            </h3>
+
+            <div className="space-y-3 text-xs text-[var(--text-secondary)]">
+              <div className="flex items-start gap-2">
+                <Target className="w-3.5 h-3.5 mt-0.5 text-amber-400 shrink-0" />
+                <p className="leading-relaxed">
+                  এই ধারণাটি তোমার ব্যাখ্যা থেকে চিহ্নিত হয়েছে।
+                  {selectedConcept.concept.confidence === "weak" && " আরও অনুশীলন প্রয়োজন।"}
+                  {selectedConcept.concept.confidence === "gap" && " এটি একটি ফাঁক — শিখতে হবে।"}
+                  {selectedConcept.concept.confidence === "strong" && " তুমি এটি ভালো বুঝেছ।"}
+                </p>
+              </div>
+
+              {selectedConcept.concept.related && selectedConcept.concept.related.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2 text-white/80">
+                    <Link2 className="w-3.5 h-3.5" />
+                    <span className="text-[11px] font-semibold">সংযুক্ত ধারণা</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedConcept.concept.related.map((r) => {
+                      const idx = concepts.findIndex((x) => x.name === r);
+                      const id = idx >= 0 ? `n-${idx}-${r}` : null;
+                      return (
+                        <button
+                          key={r}
+                          disabled={!id}
+                          onClick={() => id && (setSelectedId(id), focusNode(id))}
+                          className="px-2 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] text-white/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {r}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-2 border-t border-white/5 flex items-center gap-2 text-[10px] text-white/50">
+                <Sparkles className="w-3 h-3" />
+                নোডে ক্লিক করে আরও বিস্তারিত দেখো
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+export function MindMap(props: {
+  concepts: ExtractedConcept[];
+  extracting?: boolean;
+  onDelete?: (name: string) => void;
+}) {
+  return (
+    <ReactFlowProvider>
+      <MindMapInner {...props} />
+    </ReactFlowProvider>
   );
 }
