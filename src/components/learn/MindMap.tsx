@@ -106,13 +106,13 @@ function MindMapInner({
   const initial = useMemo(() => {
     const nodes: Node<ConceptNodeData>[] = concepts.map((c, i) => {
       const angle = (i / Math.max(concepts.length, 1)) * Math.PI * 2;
-      const r = 110 + Math.min(40, concepts.length * 4);
+      const r = 150 + Math.min(80, concepts.length * 8);
       const color = colorFor(c.confidence);
       return {
         id: `n-${i}-${c.name}`,
         type: "concept",
-        position: { x: 150 + Math.cos(angle) * r, y: 130 + Math.sin(angle) * r },
-        data: { label: c.name, color, onDelete },
+        position: { x: 180 + Math.cos(angle) * r, y: 160 + Math.sin(angle) * r },
+        data: { label: c.name, color, reason: c.reason, confidence: c.confidence, onDelete },
       };
     });
     const edges: Edge[] = [];
