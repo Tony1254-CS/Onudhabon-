@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Menu, Brain, BookOpen } from "lucide-react";
+import { Menu, Brain, BookOpen, Trophy, ExternalLink } from "lucide-react";
 import { MobileSheet } from "@/components/learn/MobileSheet";
 import { LeftPanel, type ConceptNode } from "@/components/learn/LeftPanel";
 import { MindMap, type ExtractedConcept } from "@/components/learn/MindMap";
 import { CognitivePanel } from "@/components/learn/CognitivePanel";
 import { NotesPanel } from "@/components/learn/NotesPanel";
+import { QuizPanel } from "@/components/learn/QuizPanel";
+import { ResourcesPanel } from "@/components/learn/ResourcesPanel";
 import type { CognitiveState } from "@/hooks/useCognitiveState";
 
 export function MobileLearnDrawers({
@@ -21,6 +23,11 @@ export function MobileLearnDrawers({
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [quizOpen, setQuizOpen] = useState(false);
+  const [resOpen, setResOpen] = useState(false);
+
+  const fabBase = "xl:hidden fixed right-3 z-40 flex h-12 w-12 items-center justify-center rounded-full backdrop-blur transition active:scale-95";
+
   return (
     <>
       <button
@@ -30,10 +37,12 @@ export function MobileLearnDrawers({
       >
         <Menu className="h-5 w-5" />
       </button>
+
+      {/* Stacked FABs on the right */}
       <button
         onClick={() => setRightOpen(true)}
         aria-label="mind map"
-        className="xl:hidden fixed right-3 bottom-40 z-40 flex h-12 w-12 items-center justify-center rounded-full border border-amber-400/30 bg-amber-400/10 text-amber-300 backdrop-blur hover:bg-amber-400/20"
+        className={`${fabBase} bottom-44 border border-amber-400/30 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20`}
         style={{ boxShadow: "0 0 24px rgba(245,158,11,0.25)" }}
       >
         <Brain className="h-5 w-5" />
@@ -41,11 +50,28 @@ export function MobileLearnDrawers({
       <button
         onClick={() => setNotesOpen(true)}
         aria-label="notes"
-        className="xl:hidden fixed right-3 bottom-24 z-40 flex h-12 w-12 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/10 text-emerald-200 backdrop-blur hover:bg-emerald-400/20"
+        className={`${fabBase} bottom-32 border border-emerald-400/30 bg-emerald-400/10 text-emerald-200 hover:bg-emerald-400/20`}
         style={{ boxShadow: "0 0 24px rgba(16,185,129,0.25)" }}
       >
         <BookOpen className="h-5 w-5" />
       </button>
+      <button
+        onClick={() => setQuizOpen(true)}
+        aria-label="quiz"
+        className={`${fabBase} bottom-20 border border-purple-400/30 bg-purple-400/10 text-purple-200 hover:bg-purple-400/20`}
+        style={{ boxShadow: "0 0 24px rgba(139,92,246,0.25)" }}
+      >
+        <Trophy className="h-5 w-5" />
+      </button>
+      <button
+        onClick={() => setResOpen(true)}
+        aria-label="resources"
+        className={`${fabBase} bottom-8 border border-blue-400/30 bg-blue-400/10 text-blue-200 hover:bg-blue-400/20`}
+        style={{ boxShadow: "0 0 24px rgba(59,130,246,0.25)" }}
+      >
+        <ExternalLink className="h-5 w-5" />
+      </button>
+
       <MobileSheet open={leftOpen} onClose={() => setLeftOpen(false)} side="left" title="বিষয় ও ধারণা">
         <LeftPanel topic={topic} onTopic={(t) => { onTopic(t); setLeftOpen(false); }} nodes={nodes} mobile />
       </MobileSheet>
@@ -57,6 +83,12 @@ export function MobileLearnDrawers({
       </MobileSheet>
       <MobileSheet open={notesOpen} onClose={() => setNotesOpen(false)} side="bottom" title="Notes">
         <div className="h-full min-h-0"><NotesPanel topic={topic} online={online} /></div>
+      </MobileSheet>
+      <MobileSheet open={quizOpen} onClose={() => setQuizOpen(false)} side="bottom" title="Quiz Test">
+        <div className="h-full min-h-0"><QuizPanel topic={topic} online={online} /></div>
+      </MobileSheet>
+      <MobileSheet open={resOpen} onClose={() => setResOpen(false)} side="bottom" title="Resources">
+        <div className="h-full min-h-0"><ResourcesPanel topic={topic} online={online} /></div>
       </MobileSheet>
     </>
   );
