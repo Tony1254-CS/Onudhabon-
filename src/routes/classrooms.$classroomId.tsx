@@ -189,11 +189,30 @@ function ClassroomDetail() {
     navigate({ to: "/classrooms", search: {} });
   };
 
-  if (loading || !classroom || !authorized) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-[#080B14] text-white">
         <Navbar />
-        <div className="grid min-h-[60vh] place-items-center text-white/50">লোড হচ্ছে…</div>
+        <div className="grid min-h-[60vh] place-items-center text-white/50">
+          <div className="flex items-center gap-2 text-sm"><Loader2 className="h-4 w-4 animate-spin" /> লোড হচ্ছে…</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!authorized || !classroom) {
+    return (
+      <div className="min-h-screen bg-[#080B14] text-white antialiased">
+        <Navbar />
+        <main className="mx-auto max-w-xl px-4 pt-32">
+          <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-6 text-center">
+            <h2 className="mb-2 text-lg font-semibold text-red-200">প্রবেশ নিষেধ</h2>
+            <p className="mb-4 text-sm text-white/60">{accessMessage || "ক্লাসরুম খোলা যায়নি।"}</p>
+            <Link to="/classrooms" search={{}} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-xs hover:bg-white/10">
+              <ArrowLeft className="h-3 w-3" /> সকল ক্লাসরুমে ফিরে যাও
+            </Link>
+          </div>
+        </main>
       </div>
     );
   }
