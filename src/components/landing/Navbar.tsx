@@ -120,13 +120,13 @@ export function Navbar() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-1">
-          {links.map((l) => (
+          {roleLinks.map((l) => (
             <Link
               key={l.to}
               to={l.to}
               className="relative px-4 py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
               activeProps={{ className: "text-[var(--text-primary)]" }}
-              activeOptions={{ exact: true }}
+              activeOptions={{ exact: l.to === "/" }}
             >
               {({ isActive }) => (
                 <>
@@ -142,15 +142,6 @@ export function Navbar() {
               )}
             </Link>
           ))}
-          {userId && (
-            <Link
-              to={isTeacher ? "/dashboard" : "/student"}
-              className="relative px-4 py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-              activeProps={{ className: "text-[var(--text-primary)]" }}
-            >
-              {isTeacher ? "Dashboard" : "My Progress"}
-            </Link>
-          )}
         </nav>
 
         <div className="flex items-center gap-2">
