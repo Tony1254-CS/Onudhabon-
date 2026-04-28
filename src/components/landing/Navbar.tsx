@@ -120,7 +120,7 @@ export function Navbar() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-1">
-          {roleLinks.map((l) => (
+          {(roleLinks ?? []).map((l) => (
             <Link
               key={l.to}
               to={l.to}
