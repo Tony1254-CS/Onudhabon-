@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Loader2, Save, User as UserIcon } from "lucide-react";
+import { Loader2, Save, User as UserIcon, Copy, Check, KeyRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/landing/Navbar";
 import { toast } from "sonner";
@@ -19,6 +19,8 @@ function SettingsPage() {
   const [nickname, setNickname] = useState("");
   const [classLevel, setClassLevel] = useState("");
   const [role, setRole] = useState("student");
+  const [studentCode, setStudentCode] = useState<string | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -32,7 +34,7 @@ function SettingsPage() {
       setEmail(session.user.email || "");
       const { data: p } = await supabase
         .from("profiles")
-        .select("full_name, nickname, class_level, role")
+        .select("full_name, nickname, class_level, role, student_code")
         .eq("id", session.user.id)
         .maybeSingle();
       if (!mounted) return;
@@ -41,11 +43,20 @@ function SettingsPage() {
         setNickname(p.nickname || "");
         setClassLevel(p.class_level || "");
         setRole(p.role || "student");
+        setStudentCode(p.student_code || null);
       }
       setLoading(false);
     })();
     return () => { mounted = false; };
   }, [navigate]);
+
+  const copyCode = async () => {
+    if (!studentCode) return;
+    await navigator.clipboard.writeText(studentCode);
+    setCodeCopied(true);
+    toast.success("কোড কপি হয়েছে");
+    setTimeout(() => setCodeCopied(false), 1500);
+  };
 
   const save = async () => {
     if (!userId) return;
@@ -115,6 +126,30 @@ function SettingsPage() {
             </button>
           </div>
         </section>
+
+        {role === "student" && studentCode && (
+          <section className="mt-6 rounded-2xl border border-amber-400/20 bg-gradient-to-br from-amber-500/5 to-blue-500/5 p-6">
+            <div className="flex items-start gap-3">
+              <KeyRound className="mt-0.5 h-5 w-5 text-amber-300" />
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-white">তোমার স্টুডেন্ট কোড</h3>
+                <p className="mt-1 text-xs text-white/50">এই কোডটি বাবা-মা বা শিক্ষকের সাথে শেয়ার করো — তারা তোমার অগ্রগতি দেখতে পারবে।</p>
+                <div className="mt-3 flex items-center gap-2">
+                  <code className="rounded-lg bg-black/40 px-4 py-2.5 font-mono text-lg font-bold tracking-[0.3em] text-amber-200">
+                    {studentCode}
+                  </code>
+                  <button
+                    onClick={copyCode}
+                    className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-xs hover:bg-white/10"
+                  >
+                    {codeCopied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                    কপি
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.02] p-5 text-xs text-white/50">
           <div className="flex items-center gap-2 text-white/70">

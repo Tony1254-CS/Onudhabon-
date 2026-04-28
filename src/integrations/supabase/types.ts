@@ -275,6 +275,7 @@ export type Database = {
           id: string
           nickname: string | null
           role: string
+          student_code: string | null
         }
         Insert: {
           class_level?: string | null
@@ -283,6 +284,7 @@ export type Database = {
           id: string
           nickname?: string | null
           role?: string
+          student_code?: string | null
         }
         Update: {
           class_level?: string | null
@@ -291,6 +293,7 @@ export type Database = {
           id?: string
           nickname?: string | null
           role?: string
+          student_code?: string | null
         }
         Relationships: []
       }
@@ -327,17 +330,56 @@ export type Database = {
         }
         Relationships: []
       }
+      student_links: {
+        Row: {
+          created_at: string
+          id: string
+          observer_id: string
+          relation: string
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          observer_id: string
+          relation?: string
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          observer_id?: string
+          relation?: string
+          student_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      find_student_by_code: {
+        Args: { _code: string }
+        Returns: {
+          class_level: string
+          full_name: string
+          id: string
+          nickname: string
+          role: string
+        }[]
+      }
+      generate_student_code: { Args: never; Returns: string }
       is_classroom_member: {
         Args: { _classroom_id: string; _user_id: string }
         Returns: boolean
       }
       is_classroom_teacher: {
         Args: { _classroom_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_linked_observer: {
+        Args: { _observer: string; _student: string }
         Returns: boolean
       }
     }

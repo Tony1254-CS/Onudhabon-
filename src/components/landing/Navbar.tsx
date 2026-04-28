@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
-import { LogOut, Settings, User as UserIcon, GraduationCap, ChevronDown } from "lucide-react";
+import { LogOut, Settings, User as UserIcon, GraduationCap, ChevronDown, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 const links = [
@@ -178,6 +178,9 @@ export function Navbar() {
                     <div className="my-1 h-px bg-white/5" />
                     <MenuItem to="/settings" onClick={() => setOpen(false)} icon={Settings} label="প্রোফাইল সেটিংস" />
                     <MenuItem to="/classrooms" onClick={() => setOpen(false)} icon={GraduationCap} label="ক্লাসরুম" />
+                    {(profile?.role === "teacher" || profile?.role === "parent") && (
+                      <MenuItem to="/track" onClick={() => setOpen(false)} icon={Eye} label="শিক্ষার্থী ট্র্যাক করো" />
+                    )}
                     <MenuItem
                       to={isTeacher ? "/dashboard" : "/student"}
                       onClick={() => setOpen(false)}
