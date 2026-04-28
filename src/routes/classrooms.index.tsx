@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/landing/Navbar";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/classrooms")({
+export const Route = createFileRoute("/classrooms/")({
   head: () => ({ meta: [{ title: "ক্লাসরুম — অনুধাবন AI" }] }),
   validateSearch: (s: Record<string, unknown>): { join?: string } => {
     const j = s.join;

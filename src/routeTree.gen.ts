@@ -21,6 +21,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ClassroomsRouteImport } from './routes/classrooms'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ClassroomsIndexRouteImport } from './routes/classrooms.index'
 import { Route as ClassroomsClassroomIdRouteImport } from './routes/classrooms.$classroomId'
 
 const TrackRoute = TrackRouteImport.update({
@@ -83,6 +84,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClassroomsIndexRoute = ClassroomsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ClassroomsRoute,
+} as any)
 const ClassroomsClassroomIdRoute = ClassroomsClassroomIdRouteImport.update({
   id: '/$classroomId',
   path: '/$classroomId',
@@ -103,11 +109,11 @@ export interface FileRoutesByFullPath {
   '/student': typeof StudentRoute
   '/track': typeof TrackRoute
   '/classrooms/$classroomId': typeof ClassroomsClassroomIdRoute
+  '/classrooms/': typeof ClassroomsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/classrooms': typeof ClassroomsRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
   '/galaxy': typeof GalaxyRoute
@@ -118,6 +124,7 @@ export interface FileRoutesByTo {
   '/student': typeof StudentRoute
   '/track': typeof TrackRoute
   '/classrooms/$classroomId': typeof ClassroomsClassroomIdRoute
+  '/classrooms': typeof ClassroomsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -134,6 +141,7 @@ export interface FileRoutesById {
   '/student': typeof StudentRoute
   '/track': typeof TrackRoute
   '/classrooms/$classroomId': typeof ClassroomsClassroomIdRoute
+  '/classrooms/': typeof ClassroomsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -151,11 +159,11 @@ export interface FileRouteTypes {
     | '/student'
     | '/track'
     | '/classrooms/$classroomId'
+    | '/classrooms/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
-    | '/classrooms'
     | '/dashboard'
     | '/demo'
     | '/galaxy'
@@ -166,6 +174,7 @@ export interface FileRouteTypes {
     | '/student'
     | '/track'
     | '/classrooms/$classroomId'
+    | '/classrooms'
   id:
     | '__root__'
     | '/'
@@ -181,6 +190,7 @@ export interface FileRouteTypes {
     | '/student'
     | '/track'
     | '/classrooms/$classroomId'
+    | '/classrooms/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -284,6 +294,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/classrooms/': {
+      id: '/classrooms/'
+      path: '/'
+      fullPath: '/classrooms/'
+      preLoaderRoute: typeof ClassroomsIndexRouteImport
+      parentRoute: typeof ClassroomsRoute
+    }
     '/classrooms/$classroomId': {
       id: '/classrooms/$classroomId'
       path: '/$classroomId'
@@ -296,10 +313,12 @@ declare module '@tanstack/react-router' {
 
 interface ClassroomsRouteChildren {
   ClassroomsClassroomIdRoute: typeof ClassroomsClassroomIdRoute
+  ClassroomsIndexRoute: typeof ClassroomsIndexRoute
 }
 
 const ClassroomsRouteChildren: ClassroomsRouteChildren = {
   ClassroomsClassroomIdRoute: ClassroomsClassroomIdRoute,
+  ClassroomsIndexRoute: ClassroomsIndexRoute,
 }
 
 const ClassroomsRouteWithChildren = ClassroomsRoute._addFileChildren(

@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Plus, LogIn, Users, GraduationCap, Loader2, Copy, Check, ArrowRight } from "lucide-react";
@@ -12,7 +12,7 @@ export const Route = createFileRoute("/classrooms")({
     const j = s.join;
     return typeof j === "string" && j.length > 0 ? { join: j } : {};
   },
-  component: ClassroomsPage,
+  component: ClassroomsRouteShell,
 });
 
 type Classroom = { id: string; name: string; description: string | null; subject: string | null; join_code: string; teacher_id: string; created_at: string };
@@ -22,6 +22,17 @@ function generateCode() {
   let s = "";
   for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
   return s;
+}
+
+function ClassroomsRouteShell() {
+  const location = useLocation();
+  const normalizedPath = location.pathname.replace(/\/+$/, "") || "/";
+
+  if (normalizedPath !== "/classrooms") {
+    return <Outlet />;
+  }
+
+  return <ClassroomsPage />;
 }
 
 function ClassroomsPage() {
