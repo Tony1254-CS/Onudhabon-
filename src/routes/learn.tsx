@@ -13,13 +13,15 @@ import { ChatInput } from "@/components/learn/ChatInput";
 import { TopicInput } from "@/components/learn/TopicInput";
 import { ResultCard } from "@/components/learn/ResultCard";
 import { NotesPanel } from "@/components/learn/NotesPanel";
+import { QuizPanel } from "@/components/learn/QuizPanel";
+import { ResourcesPanel } from "@/components/learn/ResourcesPanel";
 import { AttentionWidget, AttentionConsentModal, type AttentionStatus } from "@/components/learn/AttentionWidget";
 import { useChatStream, type ChatMsg } from "@/hooks/useChatStream";
 import { useCognitiveState, type Signal, type CognitiveState } from "@/hooks/useCognitiveState";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useSpeech } from "@/hooks/useSpeech";
-import { Volume2, VolumeX, Brain, BookOpen, Activity } from "lucide-react";
-import { cacheSession, idbPut } from "@/lib/idb";
+import { Volume2, VolumeX, Brain, BookOpen, Activity, Trophy, ExternalLink, ChevronRight, PanelRightClose } from "lucide-react";
+import { cacheSession, idbPut, idbGet } from "@/lib/idb";
 import { toast } from "sonner";
 
 type LearnSearch = { topic?: string };
