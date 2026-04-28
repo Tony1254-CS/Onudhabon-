@@ -79,6 +79,34 @@ function SettingsPage() {
     }
   };
 
+  const joinClassroom = async () => {
+    const code = joinCode.trim().toUpperCase();
+    if (code.length < 4) { toast.error("সঠিক কোড লিখো"); return; }
+    if (!userId) return;
+    setJoining(true);
+    try {
+      const { data: cls, error: cErr } = await supabase
+        .from("classrooms")
+        .select("id, name")
+        .eq("join_code", code)
+        .maybeSingle();
+      if (cErr || !cls) { toast.error("ক্লাসরুম পাওয়া যায়নি"); setJoining(false); return; }
+      const { error: mErr } = await supabase
+        .from("classroom_members")
+        .insert({ classroom_id: cls.id, student_id: userId });
+      if (mErr && !mErr.message.includes("duplicate")) {
+        toast.error("যোগ দেওয়া যায়নি — আবার চেষ্টা করো");
+        setJoining(false);
+        return;
+      }
+      toast.success(`"${cls.name}"-এ যোগ দেওয়া হয়েছে`);
+      setJoinCode("");
+      navigate({ to: "/classrooms/$classroomId", params: { classroomId: cls.id } });
+    } finally {
+      setJoining(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#080B14] text-white">
