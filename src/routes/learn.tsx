@@ -376,7 +376,42 @@ function LearnPage() {
           />
 
           {phase === "topic" ? (
-            <TopicInput onPick={startTeaching} />
+            <TopicInput
+              onPick={startTeaching}
+              onDirectChat={() => startTeaching("সরাসরি চ্যাট")}
+              onGenerateMap={async (t) => {
+                setTopic(t);
+                setPhase("teaching");
+                setConcepts([]);
+                await loadConceptsForTopic(t);
+                try {
+                  const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-mindmap`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` },
+                    body: JSON.stringify({ topic: t }),
+                  });
+                  if (!r.ok) throw new Error(String(r.status));
+                  const data = await r.json();
+                  const incoming: ExtractedConcept[] = [];
+                  for (const b of (data.branches ?? [])) {
+                    incoming.push({ name: b.name, confidence: "weak", related: (b.children ?? []).map((c: any) => c.name) });
+                    for (const c of (b.children ?? [])) {
+                      incoming.push({ name: c.name, confidence: "gap", related: [b.name] });
+                    }
+                  }
+                  if (incoming.length) {
+                    mergeConcepts(incoming);
+                    persistConcepts(t, incoming);
+                  }
+                  const intro: ChatMsg = { role: "user", content: `"${t}" বিষয়ের mind-map তৈরি করেছি। এবার প্রতিটি ধারণা ধরে ধরে শেখাও।` };
+                  setMessages([intro]);
+                  streamReply([intro], t, "exploring", true, () => setShowTeachBack(true));
+                } catch {
+                  toast.error("Mind-map তৈরি ব্যর্থ — সরাসরি শেখা শুরু করছি।");
+                  startTeaching(t);
+                }
+              }}
+            />
           ) : (
             <>
               <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6">

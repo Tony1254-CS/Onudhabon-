@@ -22,19 +22,26 @@ type ConceptNodeData = {
 function ConceptNode({ data }: NodeProps<ConceptNodeData>) {
   return (
     <div
-      className="group relative font-bangla text-[11px] leading-none"
+      className="group relative font-bangla text-[12px] leading-tight transition-transform hover:scale-[1.06]"
       style={{
-        background: `${data.color}1a`,
+        background: `linear-gradient(135deg, ${data.color}26, ${data.color}0d)`,
         border: `1.5px solid ${data.color}`,
-        color: "#F1F5F9",
-        padding: "6px 10px",
-        paddingRight: data.onDelete ? 22 : 10,
-        borderRadius: 14,
-        boxShadow: `0 0 14px ${data.color}66`,
+        color: "#F8FAFC",
+        padding: "8px 14px",
+        paddingRight: data.onDelete ? 26 : 14,
+        borderRadius: 999,
+        boxShadow: `0 0 18px ${data.color}55, inset 0 0 12px ${data.color}1a`,
+        backdropFilter: "blur(6px)",
       }}
     >
       <Handle type="target" position={Position.Top} style={{ opacity: 0, pointerEvents: "none" }} />
-      {data.label}
+      <span className="inline-flex items-center gap-1.5">
+        <span
+          className="w-1.5 h-1.5 rounded-full shrink-0"
+          style={{ background: data.color, boxShadow: `0 0 8px ${data.color}` }}
+        />
+        {data.label}
+      </span>
       {data.onDelete && (
         <button
           type="button"
