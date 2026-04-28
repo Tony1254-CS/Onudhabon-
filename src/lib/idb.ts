@@ -1,7 +1,7 @@
 // Lightweight IndexedDB wrapper for offline cache
 const DB_NAME = "onudhabon";
-const DB_VERSION = 1;
-const STORES = ["sessions", "concept_nodes", "rag_cache", "demo_responses"] as const;
+const DB_VERSION = 2;
+const STORES = ["sessions", "concept_nodes", "rag_cache", "demo_responses", "notes", "mindmaps"] as const;
 type Store = typeof STORES[number];
 
 function open(): Promise<IDBDatabase> {
