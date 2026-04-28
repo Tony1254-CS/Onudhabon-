@@ -11,13 +11,16 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StudentRouteImport } from './routes/student'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LearnRouteImport } from './routes/learn'
 import { Route as GalaxyRouteImport } from './routes/galaxy'
 import { Route as DemoRouteImport } from './routes/demo'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ClassroomsRouteImport } from './routes/classrooms'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ClassroomsClassroomIdRouteImport } from './routes/classrooms.$classroomId'
 
 const StudentRoute = StudentRouteImport.update({
   id: '/student',
@@ -27,6 +30,11 @@ const StudentRoute = StudentRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -54,6 +62,11 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClassroomsRoute = ClassroomsRouteImport.update({
+  id: '/classrooms',
+  path: '/classrooms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
@@ -64,85 +77,110 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClassroomsClassroomIdRoute = ClassroomsClassroomIdRouteImport.update({
+  id: '/$classroomId',
+  path: '/$classroomId',
+  getParentRoute: () => ClassroomsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/classrooms': typeof ClassroomsRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
   '/galaxy': typeof GalaxyRoute
   '/learn': typeof LearnRoute
   '/login': typeof LoginRoute
+  '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/student': typeof StudentRoute
+  '/classrooms/$classroomId': typeof ClassroomsClassroomIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/classrooms': typeof ClassroomsRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
   '/galaxy': typeof GalaxyRoute
   '/learn': typeof LearnRoute
   '/login': typeof LoginRoute
+  '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/student': typeof StudentRoute
+  '/classrooms/$classroomId': typeof ClassroomsClassroomIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/classrooms': typeof ClassroomsRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
   '/galaxy': typeof GalaxyRoute
   '/learn': typeof LearnRoute
   '/login': typeof LoginRoute
+  '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/student': typeof StudentRoute
+  '/classrooms/$classroomId': typeof ClassroomsClassroomIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/about'
+    | '/classrooms'
     | '/dashboard'
     | '/demo'
     | '/galaxy'
     | '/learn'
     | '/login'
+    | '/settings'
     | '/signup'
     | '/student'
+    | '/classrooms/$classroomId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
+    | '/classrooms'
     | '/dashboard'
     | '/demo'
     | '/galaxy'
     | '/learn'
     | '/login'
+    | '/settings'
     | '/signup'
     | '/student'
+    | '/classrooms/$classroomId'
   id:
     | '__root__'
     | '/'
     | '/about'
+    | '/classrooms'
     | '/dashboard'
     | '/demo'
     | '/galaxy'
     | '/learn'
     | '/login'
+    | '/settings'
     | '/signup'
     | '/student'
+    | '/classrooms/$classroomId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  ClassroomsRoute: typeof ClassroomsRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   DemoRoute: typeof DemoRoute
   GalaxyRoute: typeof GalaxyRoute
   LearnRoute: typeof LearnRoute
   LoginRoute: typeof LoginRoute
+  SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
   StudentRoute: typeof StudentRoute
 }
@@ -161,6 +199,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -198,6 +243,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/classrooms': {
+      id: '/classrooms'
+      path: '/classrooms'
+      fullPath: '/classrooms'
+      preLoaderRoute: typeof ClassroomsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/about': {
       id: '/about'
       path: '/about'
@@ -212,17 +264,38 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/classrooms/$classroomId': {
+      id: '/classrooms/$classroomId'
+      path: '/$classroomId'
+      fullPath: '/classrooms/$classroomId'
+      preLoaderRoute: typeof ClassroomsClassroomIdRouteImport
+      parentRoute: typeof ClassroomsRoute
+    }
   }
 }
+
+interface ClassroomsRouteChildren {
+  ClassroomsClassroomIdRoute: typeof ClassroomsClassroomIdRoute
+}
+
+const ClassroomsRouteChildren: ClassroomsRouteChildren = {
+  ClassroomsClassroomIdRoute: ClassroomsClassroomIdRoute,
+}
+
+const ClassroomsRouteWithChildren = ClassroomsRoute._addFileChildren(
+  ClassroomsRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  ClassroomsRoute: ClassroomsRouteWithChildren,
   DashboardRoute: DashboardRoute,
   DemoRoute: DemoRoute,
   GalaxyRoute: GalaxyRoute,
   LearnRoute: LearnRoute,
   LoginRoute: LoginRoute,
+  SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
   StudentRoute: StudentRoute,
 }
