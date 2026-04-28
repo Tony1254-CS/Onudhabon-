@@ -38,6 +38,7 @@ export const Route = createFileRoute("/learn")({
 type Phase = "topic" | "teaching" | "socratic" | "result";
 
 const RAG_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-concepts`;
+const EVAL_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/socratic-evaluate`;
 const KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 function LearnPage() {
@@ -206,10 +207,12 @@ function LearnPage() {
     const userMsg: ChatMsg = { role: "user", content: `আমাকে "${t}" সম্পর্কে শেখাও।` };
     setMessages([userMsg]);
     setSignals((s) => [...s, { ts: Date.now(), type: "send", length: userMsg.content.length }]);
-    streamReply([userMsg], t, "focused", true, () => setShowTeachBack(true));
+    streamReply([userMsg], t, "focused", true, "teaching", () => setShowTeachBack(true));
   };
 
-  const mergeConcepts = (incoming: ExtractedConcept[]) => {
+  // mode = "merge" : take the higher confidence (used in teaching to grow the map without ever auto-mastering)
+  // mode = "verdict": authoritative — the AI Socratic verdict overwrites confidence (allows promotion to "strong" AND demotion).
+  const mergeConcepts = (incoming: ExtractedConcept[], mode: "merge" | "verdict" = "merge") => {
     setConcepts((prev) => {
       const rank = { strong: 3, weak: 2, gap: 1 } as const;
       const map = new Map<string, ExtractedConcept>();
@@ -217,18 +220,24 @@ function LearnPage() {
       for (const c of incoming) {
         const existing = map.get(c.name);
         if (!existing) { map.set(c.name, c); continue; }
-        const merged: ExtractedConcept = {
+        const nextConfidence =
+          mode === "verdict"
+            ? c.confidence
+            : rank[c.confidence] >= rank[existing.confidence] ? c.confidence : existing.confidence;
+        map.set(c.name, {
           name: c.name,
-          confidence: rank[c.confidence] >= rank[existing.confidence] ? c.confidence : existing.confidence,
+          confidence: nextConfidence,
           related: Array.from(new Set([...(existing.related ?? []), ...(c.related ?? [])])),
-        };
-        map.set(c.name, merged);
+        });
       }
       return Array.from(map.values());
     });
   };
 
-  const runExtraction = async (history: ChatMsg[], topicVal: string) => {
+  // Live mind-map extraction. In teaching mode we grow the map but DOWNGRADE any
+  // "strong" verdict from the generic extractor to "weak" — student hasn't proven
+  // mastery yet; only the Socratic evaluator can mint a gold star.
+  const runExtraction = async (history: ChatMsg[], topicVal: string, mode: Phase) => {
     const transcript = history
       .map((m) => `${m.role === "user" ? "Student" : "Tutor"}: ${m.content}`)
       .join("\n");
@@ -242,15 +251,43 @@ function LearnPage() {
       });
       const j = await r.json();
       if (Array.isArray(j.concepts) && j.concepts.length) {
-        mergeConcepts(j.concepts);
-        persistConcepts(topicVal, j.concepts);
+        const sanitized: ExtractedConcept[] = (j.concepts as ExtractedConcept[]).map((c) =>
+          mode === "teaching" && c.confidence === "strong" ? { ...c, confidence: "weak" } : c,
+        );
+        mergeConcepts(sanitized, "merge");
+        // Persist WITHOUT the mastery-burst side-effect for teaching mode (no "strong" present anyway).
+        persistConcepts(topicVal, sanitized);
       }
     } catch { /* silent */ }
     finally { setExtracting(false); }
   };
 
+  // Socratic AI mastery verdict — authoritative source for "mastered → galaxy star".
+  // Runs only on the student's OWN explanation (user turns), so the tutor's words
+  // can never accidentally promote a concept.
+  const runSocraticEvaluation = async (studentExplanation: string, topicVal: string) => {
+    if (!studentExplanation.trim() || !topicVal || !online) return;
+    setExtracting(true);
+    try {
+      const r = await fetch(EVAL_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` },
+        body: JSON.stringify({ topic: topicVal, studentExplanation }),
+      });
+      const j = await r.json();
+      if (Array.isArray(j.concepts) && j.concepts.length) {
+        const verdicts = j.concepts as ExtractedConcept[];
+        mergeConcepts(verdicts, "verdict");
+        persistConcepts(topicVal, verdicts);
+      }
+    } catch { /* silent */ }
+    finally { setExtracting(false); }
+  };
+
+
   const streamReply = (
-    history: ChatMsg[], topicVal: string, state: string, useRAG: boolean, onDone?: () => void
+    history: ChatMsg[], topicVal: string, state: string, useRAG: boolean,
+    extractionMode: Phase, onDone?: () => void,
   ) => {
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
     let acc = "";
@@ -264,9 +301,9 @@ function LearnPage() {
       });
     }).then(() => {
       setSignals((s) => [...s, { ts: Date.now(), type: "receive", length: acc.length }]);
-      // Live concept extraction after every assistant turn
+      // Grow the live mind-map after every assistant turn (no auto-mastery here).
       const fullHistory: ChatMsg[] = [...history, { role: "assistant", content: acc }];
-      runExtraction(fullHistory, topicVal);
+      runExtraction(fullHistory, topicVal, extractionMode);
       if (autoSpeak && acc.trim()) {
         speak(acc, "bn-BD").then((ok) => {
           if (!ok) toast.error("এই ডিভাইসে বাংলা ভয়েস প্লেব্যাক শুরু হয়নি।");
@@ -295,14 +332,31 @@ function LearnPage() {
     setSignals((s) => [...s, { ts: Date.now(), type: "send", length: text.length }]);
     setShowTeachBack(false);
 
+    // Live mind-map: kick off extraction immediately from what the student JUST wrote,
+    // before the AI even replies — so the map reacts to user input in real time.
+    if (text.trim() && topic) {
+      if (phase === "socratic") {
+        // Authoritative AI verdict on the student's full explanation so far.
+        const studentExplanation = history
+          .filter((m) => m.role === "user")
+          .map((m) => m.content)
+          .join("\n");
+        runSocraticEvaluation(studentExplanation, topic);
+      } else {
+        runExtraction(history.map(({ image: _i, ...m }) => m), topic, phase);
+      }
+    }
+
     streamReply(
       history.map(({ image: _i, ...m }) => m),
       topic,
       cognitiveState,
       true,
+      phase,
       () => { if (phase === "teaching") setShowTeachBack(true); },
     );
   };
+
 
   const enterSocratic = () => {
     setPhase("socratic");
@@ -446,7 +500,7 @@ function LearnPage() {
                   }
                   const intro: ChatMsg = { role: "user", content: `"${t}" বিষয়ের mind-map তৈরি করেছি। এবার প্রতিটি ধারণা ধরে ধরে শেখাও।` };
                   setMessages([intro]);
-                  streamReply([intro], t, "exploring", true, () => setShowTeachBack(true));
+                  streamReply([intro], t, "exploring", true, "teaching", () => setShowTeachBack(true));
                 } catch {
                   toast.error("Mind-map তৈরি ব্যর্থ — সরাসরি শেখা শুরু করছি।");
                   startTeaching(t);
