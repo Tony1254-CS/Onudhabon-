@@ -1,7 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Loader2, Save, User as UserIcon, Copy, Check, KeyRound, GraduationCap, ArrowRight } from "lucide-react";
+import { Loader2, Save, User as UserIcon, Copy, Check, KeyRound, GraduationCap, ArrowRight, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/landing/Navbar";
 import { toast } from "sonner";
@@ -25,6 +25,15 @@ function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [joining, setJoining] = useState(false);
+  const [enrolled, setEnrolled] = useState<{ id: string; name: string; subject: string | null; join_code: string }[]>([]);
+
+  const loadEnrolled = async (uid: string) => {
+    const { data: mems } = await supabase.from("classroom_members").select("classroom_id").eq("student_id", uid);
+    const ids = (mems || []).map((m) => m.classroom_id);
+    if (!ids.length) { setEnrolled([]); return; }
+    const { data: rooms } = await supabase.from("classrooms").select("id, name, subject, join_code").in("id", ids);
+    setEnrolled((rooms || []) as typeof enrolled);
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -47,6 +56,7 @@ function SettingsPage() {
         setRole(p.role || "student");
         setStudentCode(p.student_code || null);
       }
+      if ((p?.role || "student") === "student") await loadEnrolled(session.user.id);
       setLoading(false);
     })();
     return () => { mounted = false; };
@@ -101,7 +111,7 @@ function SettingsPage() {
       }
       toast.success(`"${cls.name}"-এ যোগ দেওয়া হয়েছে`);
       setJoinCode("");
-      navigate({ to: "/classrooms/$classroomId", params: { classroomId: cls.id } });
+      await loadEnrolled(userId);
     } finally {
       setJoining(false);
     }
@@ -206,8 +216,30 @@ function SettingsPage() {
                     যোগ দাও
                   </button>
                 </div>
+
+                {enrolled.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-white/50">যোগদানকৃত ক্লাস ({enrolled.length})</p>
+                    {enrolled.map((c) => (
+                      <Link
+                        key={c.id}
+                        to="/classrooms/$classroomId"
+                        params={{ classroomId: c.id }}
+                        className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm hover:bg-white/[0.06] transition-colors"
+                      >
+                        <span className="flex items-center gap-2 min-w-0">
+                          <BookOpen className="h-3.5 w-3.5 text-blue-300 shrink-0" />
+                          <span className="truncate">{c.name}</span>
+                          {c.subject && <span className="text-xs text-white/40 truncate">· {c.subject}</span>}
+                        </span>
+                        <span className="font-mono text-[10px] text-white/40">{c.join_code}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+
                 <button
-                  onClick={() => navigate({ to: "/classrooms" })}
+                  onClick={() => navigate({ to: "/classrooms", search: {} })}
                   className="mt-3 text-xs text-blue-300 hover:text-blue-200 underline-offset-2 hover:underline"
                 >
                   সব ক্লাসরুম দেখো →
