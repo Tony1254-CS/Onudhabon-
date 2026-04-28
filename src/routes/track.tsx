@@ -200,8 +200,17 @@ function TrackPage() {
         </Link>
 
         <motion.header initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">শিক্ষার্থী ট্র্যাকিং</h1>
-          <p className="mt-1 text-sm text-white/50">শিক্ষার্থীর ৮-অক্ষরের কোড দিয়ে যোগ করো — তারপর তার অগ্রগতি দেখতে পারবে</p>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold tracking-tight">শিক্ষার্থী ট্র্যাকিং</h1>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              </span>
+              LIVE
+            </span>
+          </div>
+          <p className="mt-1 text-sm text-white/50">শিক্ষার্থীর ৮-অক্ষরের কোড দিয়ে যোগ করো — তারপর তার অগ্রগতি real-time দেখতে পারবে</p>
         </motion.header>
 
         {/* Add by code */}
