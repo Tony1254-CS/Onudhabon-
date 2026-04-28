@@ -12,12 +12,13 @@ import { MessageBubble, TypingDots } from "@/components/learn/MessageBubble";
 import { ChatInput } from "@/components/learn/ChatInput";
 import { TopicInput } from "@/components/learn/TopicInput";
 import { ResultCard } from "@/components/learn/ResultCard";
+import { NotesPanel } from "@/components/learn/NotesPanel";
 import { AttentionWidget, AttentionConsentModal, type AttentionStatus } from "@/components/learn/AttentionWidget";
 import { useChatStream, type ChatMsg } from "@/hooks/useChatStream";
 import { useCognitiveState, type Signal, type CognitiveState } from "@/hooks/useCognitiveState";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useSpeech } from "@/hooks/useSpeech";
-import { Volume2, VolumeX } from "lucide-react";
+import { Volume2, VolumeX, Brain, BookOpen, Activity } from "lucide-react";
 import { cacheSession, idbPut } from "@/lib/idb";
 import { toast } from "sonner";
 
@@ -306,7 +307,7 @@ function LearnPage() {
       <Navbar />
       <div className="pt-16 h-screen flex">
         <LeftPanel topic={topic} onTopic={startTeaching} nodes={leftNodes} />
-        <MobileLearnDrawers topic={topic} onTopic={startTeaching} nodes={leftNodes} concepts={concepts} cognitiveState={cognitiveState} onDeleteConcept={deleteConcept} />
+        <MobileLearnDrawers topic={topic} onTopic={startTeaching} nodes={leftNodes} concepts={concepts} cognitiveState={cognitiveState} onDeleteConcept={deleteConcept} online={online} />
 
         {/* CENTER */}
         <main className="flex-1 flex flex-col min-w-0 relative">
@@ -480,24 +481,81 @@ function LearnPage() {
         </main>
 
         {/* RIGHT */}
-        <aside className="hidden xl:flex flex-col w-[320px] shrink-0 border-l border-[var(--border)] bg-[var(--bg-secondary)]/40 backdrop-blur-xl">
-          <div className="h-[60%] border-b border-[var(--border)] relative">
-            <div className="absolute top-2 right-2 z-10 text-[10px] uppercase tracking-[0.2em] text-[var(--text-secondary)] flex items-center gap-1.5">
-              {extracting && (
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent-purple)] opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--accent-purple)]" />
-                </span>
-              )}
-              {extracting ? "Extracting…" : "Live Mind Map"}
-            </div>
-            <MindMap concepts={concepts} extracting={extracting} onDelete={deleteConcept} />
-          </div>
-          <div className="h-[40%]">
-            <CognitivePanel state={cognitiveState} />
-          </div>
+        <aside className="hidden xl:flex flex-col w-[360px] shrink-0 border-l border-[var(--border)] bg-[var(--bg-secondary)]/40 backdrop-blur-xl">
+          <RightTabs
+            tabs={[
+              {
+                id: "map",
+                label: "Mind Map",
+                icon: <Brain className="w-3.5 h-3.5" />,
+                content: (
+                  <div className="h-full relative">
+                    <div className="absolute top-2 right-2 z-10 text-[10px] uppercase tracking-[0.2em] text-[var(--text-secondary)] flex items-center gap-1.5">
+                      {extracting && (
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent-purple)] opacity-75" />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--accent-purple)]" />
+                        </span>
+                      )}
+                      {extracting ? "Extracting…" : "Live Mind Map"}
+                    </div>
+                    <MindMap concepts={concepts} extracting={extracting} onDelete={deleteConcept} />
+                  </div>
+                ),
+              },
+              {
+                id: "notes",
+                label: "Notes",
+                icon: <BookOpen className="w-3.5 h-3.5" />,
+                content: <NotesPanel topic={topic} online={online} />,
+              },
+              {
+                id: "state",
+                label: "State",
+                icon: <Activity className="w-3.5 h-3.5" />,
+                content: <CognitivePanel state={cognitiveState} />,
+              },
+            ]}
+          />
         </aside>
       </div>
     </div>
+  );
+}
+
+type Tab = { id: string; label: string; icon: React.ReactNode; content: React.ReactNode };
+
+function RightTabs({ tabs }: { tabs: Tab[] }) {
+  const [active, setActive] = useState(tabs[0]?.id);
+  return (
+    <>
+      <div className="flex shrink-0 border-b border-[var(--border)] bg-black/30 backdrop-blur">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setActive(t.id)}
+            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-[11px] uppercase tracking-[0.15em] transition-colors border-b-2 ${
+              active === t.id
+                ? "border-amber-400 text-amber-300 bg-amber-400/[0.04]"
+                : "border-transparent text-[var(--text-secondary)] hover:text-white/80 hover:bg-white/[0.03]"
+            }`}
+          >
+            {t.icon}
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </div>
+      <div className="flex-1 min-h-0 relative">
+        {tabs.map((t) => (
+          <div
+            key={t.id}
+            className="absolute inset-0"
+            style={{ display: active === t.id ? "block" : "none" }}
+          >
+            {t.content}
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
