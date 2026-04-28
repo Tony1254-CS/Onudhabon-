@@ -444,6 +444,7 @@ export function createGalaxy(
   return {
     setStars,
     focusStar,
+    celebrateStar,
     setSubjectFilter,
     destroy: () => {
       cancelAnimationFrame(raf);
