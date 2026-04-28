@@ -248,10 +248,16 @@ function MindMapInner({
               <div className="flex items-start gap-2">
                 <Target className="w-3.5 h-3.5 mt-0.5 text-amber-400 shrink-0" />
                 <p className="leading-relaxed">
-                  এই ধারণাটি তোমার ব্যাখ্যা থেকে চিহ্নিত হয়েছে।
-                  {selectedConcept.concept.confidence === "weak" && " আরও অনুশীলন প্রয়োজন।"}
-                  {selectedConcept.concept.confidence === "gap" && " এটি একটি ফাঁক — শিখতে হবে।"}
-                  {selectedConcept.concept.confidence === "strong" && " তুমি এটি ভালো বুঝেছ।"}
+                  {selectedConcept.concept.reason ? (
+                    <span className="text-white/85">{selectedConcept.concept.reason}</span>
+                  ) : (
+                    <>
+                      এই ধারণাটি তোমার ব্যাখ্যা থেকে চিহ্নিত হয়েছে।
+                      {selectedConcept.concept.confidence === "weak" && " আরও অনুশীলন প্রয়োজন।"}
+                      {selectedConcept.concept.confidence === "gap" && " এটি একটি ফাঁক — শিখতে হবে।"}
+                      {selectedConcept.concept.confidence === "strong" && " তুমি এটি ভালো বুঝেছ।"}
+                    </>
+                  )}
                 </p>
               </div>
 
