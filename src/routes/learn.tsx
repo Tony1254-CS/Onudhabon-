@@ -207,7 +207,7 @@ function LearnPage() {
     const userMsg: ChatMsg = { role: "user", content: `আমাকে "${t}" সম্পর্কে শেখাও।` };
     setMessages([userMsg]);
     setSignals((s) => [...s, { ts: Date.now(), type: "send", length: userMsg.content.length }]);
-    streamReply([userMsg], t, "focused", true, () => setShowTeachBack(true));
+    streamReply([userMsg], t, "focused", true, "teaching", () => setShowTeachBack(true));
   };
 
   // mode = "merge" : take the higher confidence (used in teaching to grow the map without ever auto-mastering)
