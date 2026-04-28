@@ -19,36 +19,60 @@ const labelFor = (c: ExtractedConcept["confidence"]) =>
 type ConceptNodeData = {
   label: string;
   color: string;
+  reason?: string;
+  confidence?: ExtractedConcept["confidence"];
   selected?: boolean;
   onDelete?: (name: string) => void;
 };
 
 function ConceptNode({ data }: NodeProps<ConceptNodeData>) {
+  const verdictLabel = data.confidence
+    ? data.confidence === "strong" ? "শক্তিশালী"
+      : data.confidence === "weak" ? "দুর্বল" : "ফাঁক"
+    : null;
   return (
     <div
-      className="group relative font-bangla text-[12px] leading-tight transition-all duration-300 hover:scale-[1.06]"
+      className="group relative font-bangla text-[12px] leading-tight transition-all duration-300 hover:scale-[1.04]"
       style={{
         background: `linear-gradient(135deg, ${data.color}26, ${data.color}0d)`,
         border: `${data.selected ? 2 : 1.5}px solid ${data.color}`,
         color: "#F8FAFC",
-        padding: "8px 14px",
+        padding: data.reason ? "8px 14px 9px" : "8px 14px",
         paddingRight: data.onDelete ? 26 : 14,
-        borderRadius: 999,
+        borderRadius: data.reason ? 14 : 999,
+        maxWidth: 230,
         boxShadow: data.selected
           ? `0 0 28px ${data.color}cc, inset 0 0 14px ${data.color}33`
           : `0 0 18px ${data.color}55, inset 0 0 12px ${data.color}1a`,
         backdropFilter: "blur(6px)",
-        transform: data.selected ? "scale(1.08)" : undefined,
+        transform: data.selected ? "scale(1.06)" : undefined,
       }}
     >
       <Handle type="target" position={Position.Top} style={{ opacity: 0, pointerEvents: "none" }} />
-      <span className="inline-flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5">
         <span
           className="w-1.5 h-1.5 rounded-full shrink-0"
           style={{ background: data.color, boxShadow: `0 0 8px ${data.color}` }}
         />
-        {data.label}
-      </span>
+        <span className="font-medium truncate">{data.label}</span>
+        {verdictLabel && (
+          <span
+            className="ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide"
+            style={{ background: `${data.color}22`, color: data.color, border: `1px solid ${data.color}55` }}
+          >
+            {verdictLabel}
+          </span>
+        )}
+      </div>
+      {data.reason && (
+        <p
+          className="mt-1 text-[10px] leading-snug text-white/70"
+          style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
+          title={data.reason}
+        >
+          {data.reason}
+        </p>
+      )}
       {data.onDelete && (
         <button
           type="button"
