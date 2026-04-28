@@ -56,6 +56,29 @@ function TrackPage() {
     return () => { mounted = false; };
   }, [navigate]);
 
+  // Real-time refresh: re-load when any tracked student's nodes/sessions change
+  useEffect(() => {
+    if (!userId || !students.length) return;
+    const ids = new Set(students.map((s) => s.student_id));
+    let debounce: ReturnType<typeof setTimeout> | null = null;
+    const trigger = (uid: string) => {
+      if (!ids.has(uid)) return;
+      if (debounce) clearTimeout(debounce);
+      debounce = setTimeout(() => loadLinks(userId), 400);
+    };
+    const channel = supabase
+      .channel(`track-${userId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "concept_nodes" },
+        (payload) => trigger((payload.new as { user_id?: string })?.user_id || (payload.old as { user_id?: string })?.user_id || ""))
+      .on("postgres_changes", { event: "*", schema: "public", table: "sessions" },
+        (payload) => trigger((payload.new as { user_id?: string })?.user_id || (payload.old as { user_id?: string })?.user_id || ""))
+      .subscribe();
+    return () => {
+      if (debounce) clearTimeout(debounce);
+      supabase.removeChannel(channel);
+    };
+  }, [userId, students]);
+
   const loadLinks = async (uid: string) => {
     const { data: links } = await supabase
       .from("student_links")
