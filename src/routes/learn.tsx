@@ -286,7 +286,8 @@ function LearnPage() {
 
 
   const streamReply = (
-    history: ChatMsg[], topicVal: string, state: string, useRAG: boolean, onDone?: () => void
+    history: ChatMsg[], topicVal: string, state: string, useRAG: boolean,
+    extractionMode: Phase, onDone?: () => void,
   ) => {
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
     let acc = "";
@@ -300,9 +301,9 @@ function LearnPage() {
       });
     }).then(() => {
       setSignals((s) => [...s, { ts: Date.now(), type: "receive", length: acc.length }]);
-      // Live concept extraction after every assistant turn
+      // Grow the live mind-map after every assistant turn (no auto-mastery here).
       const fullHistory: ChatMsg[] = [...history, { role: "assistant", content: acc }];
-      runExtraction(fullHistory, topicVal);
+      runExtraction(fullHistory, topicVal, extractionMode);
       if (autoSpeak && acc.trim()) {
         speak(acc, "bn-BD").then((ok) => {
           if (!ok) toast.error("এই ডিভাইসে বাংলা ভয়েস প্লেব্যাক শুরু হয়নি।");
@@ -331,14 +332,31 @@ function LearnPage() {
     setSignals((s) => [...s, { ts: Date.now(), type: "send", length: text.length }]);
     setShowTeachBack(false);
 
+    // Live mind-map: kick off extraction immediately from what the student JUST wrote,
+    // before the AI even replies — so the map reacts to user input in real time.
+    if (text.trim() && topic) {
+      if (phase === "socratic") {
+        // Authoritative AI verdict on the student's full explanation so far.
+        const studentExplanation = history
+          .filter((m) => m.role === "user")
+          .map((m) => m.content)
+          .join("\n");
+        runSocraticEvaluation(studentExplanation, topic);
+      } else {
+        runExtraction(history.map(({ image: _i, ...m }) => m), topic, phase);
+      }
+    }
+
     streamReply(
       history.map(({ image: _i, ...m }) => m),
       topic,
       cognitiveState,
       true,
+      phase,
       () => { if (phase === "teaching") setShowTeachBack(true); },
     );
   };
+
 
   const enterSocratic = () => {
     setPhase("socratic");
