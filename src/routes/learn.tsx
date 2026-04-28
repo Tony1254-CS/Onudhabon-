@@ -15,6 +15,7 @@ import { ResultCard } from "@/components/learn/ResultCard";
 import { NotesPanel } from "@/components/learn/NotesPanel";
 import { QuizPanel } from "@/components/learn/QuizPanel";
 import { ResourcesPanel } from "@/components/learn/ResourcesPanel";
+import { MasteryBurst } from "@/components/learn/MasteryBurst";
 import { AttentionWidget, AttentionConsentModal, type AttentionStatus } from "@/components/learn/AttentionWidget";
 import { useChatStream, type ChatMsg } from "@/hooks/useChatStream";
 import { useCognitiveState, type Signal, type CognitiveState } from "@/hooks/useCognitiveState";
@@ -144,8 +145,31 @@ function LearnPage() {
 
   const persistConcepts = async (topicVal: string, items: ExtractedConcept[]) => {
     if (!topicVal || !items.length) return;
+    // Detect newly mastered concepts vs previous cache
+    const prev = (await idbGet<ExtractedConcept[]>("concept_nodes", `topic_${topicVal}`)) || [];
+    const prevMap = new Map(prev.map((p) => [p.name, p.confidence]));
+    const newlyMastered = items.filter(
+      (c) => c.confidence === "strong" && prevMap.get(c.name) !== "strong",
+    );
     // Cache locally for full offline mind-map
     await idbPut("concept_nodes", `topic_${topicVal}`, items);
+
+    if (newlyMastered.length) {
+      // Queue celebrations for the Galaxy page
+      const queueRaw = localStorage.getItem("galaxy_celebrations");
+      const queue: string[] = queueRaw ? JSON.parse(queueRaw) : [];
+      newlyMastered.forEach((c) => {
+        queue.push(`${topicVal}::${c.name}`);
+        toast.success(`🌟 নতুন তারা! "${c.name}" আয়ত্তে এসেছে`, {
+          description: "তোমার জ্ঞানের মহাবিশ্বে যোগ হলো একটি উজ্জ্বল তারা।",
+          duration: 4500,
+        });
+      });
+      localStorage.setItem("galaxy_celebrations", JSON.stringify(queue.slice(-50)));
+      // Local in-page sparkle burst
+      window.dispatchEvent(new CustomEvent("mastery-burst", { detail: { count: newlyMastered.length } }));
+    }
+
     if (!userId || !online) return;
     const rows = items.map((c) => ({
       user_id: userId,
@@ -320,6 +344,7 @@ function LearnPage() {
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] antialiased">
       <Navbar />
+      <MasteryBurst />
       <div className="pt-16 h-screen flex">
         <LeftPanel topic={topic} onTopic={startTeaching} nodes={leftNodes} />
         <MobileLearnDrawers topic={topic} onTopic={startTeaching} nodes={leftNodes} concepts={concepts} cognitiveState={cognitiveState} onDeleteConcept={deleteConcept} online={online} />

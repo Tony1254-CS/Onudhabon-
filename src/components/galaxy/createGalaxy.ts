@@ -48,6 +48,7 @@ function seededRand(seed: number) {
 export type GalaxyHandle = {
   setStars: (stars: GalaxyStar[]) => void;
   focusStar: (id: string) => void;
+  celebrateStar: (id: string) => void;
   setSubjectFilter: (subject: string | null) => void;
   destroy: () => void;
 };
@@ -278,6 +279,78 @@ export function createGalaxy(
     setTimeout(() => { ref.baseScale = 1; }, 1200);
   }
 
+  function celebrateStar(id: string) {
+    const ref = starRefs.find((s) => s.star.id === id);
+    if (!ref) return;
+    // Camera fly-in
+    focusStar(id);
+    // Big pulse
+    ref.baseScale = 2.4;
+    setTimeout(() => { ref.baseScale = 1.2; }, 1400);
+
+    // Sparkle burst — 60 small points exploding outward then fading
+    const burstCount = 60;
+    const burstGeom = new THREE.BufferGeometry();
+    const burstPos = new Float32Array(burstCount * 3);
+    const velocities: THREE.Vector3[] = [];
+    for (let i = 0; i < burstCount; i++) {
+      burstPos[i * 3] = ref.mesh.position.x;
+      burstPos[i * 3 + 1] = ref.mesh.position.y;
+      burstPos[i * 3 + 2] = ref.mesh.position.z;
+      const v = new THREE.Vector3(
+        (Math.random() - 0.5) * 2,
+        (Math.random() - 0.5) * 2,
+        (Math.random() - 0.5) * 2,
+      ).normalize().multiplyScalar(0.15 + Math.random() * 0.25);
+      velocities.push(v);
+    }
+    burstGeom.setAttribute("position", new THREE.BufferAttribute(burstPos, 3));
+    const burstMat = new THREE.PointsMaterial({
+      color: 0xfde047, size: 0.6, transparent: true, opacity: 1,
+      sizeAttenuation: true, depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const burst = new THREE.Points(burstGeom, burstMat);
+    scene.add(burst);
+
+    // Expanding gold ring halo
+    const ringGeom = new THREE.RingGeometry(0.5, 0.6, 48);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0xf59e0b, transparent: true, opacity: 0.9,
+      side: THREE.DoubleSide, depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const ring = new THREE.Mesh(ringGeom, ringMat);
+    ring.position.copy(ref.mesh.position);
+    scene.add(ring);
+
+    const startT = performance.now();
+    const dur = 1600;
+    function animateBurst() {
+      const t = (performance.now() - startT) / dur;
+      if (t >= 1) {
+        scene.remove(burst); burstGeom.dispose(); burstMat.dispose();
+        scene.remove(ring); ringGeom.dispose(); ringMat.dispose();
+        return;
+      }
+      const arr = burstGeom.attributes.position.array as Float32Array;
+      for (let i = 0; i < burstCount; i++) {
+        arr[i * 3] += velocities[i].x;
+        arr[i * 3 + 1] += velocities[i].y;
+        arr[i * 3 + 2] += velocities[i].z;
+        velocities[i].multiplyScalar(0.97);
+      }
+      burstGeom.attributes.position.needsUpdate = true;
+      burstMat.opacity = 1 - t;
+      const s = 1 + t * 12;
+      ring.scale.setScalar(s);
+      ring.lookAt(camera.position);
+      ringMat.opacity = (1 - t) * 0.9;
+      requestAnimationFrame(animateBurst);
+    }
+    animateBurst();
+  }
+
   function animateCamera(toPos: THREE.Vector3, lookAt: THREE.Vector3) {
     const fromPos = camera.position.clone();
     const fromTarget = controls.target.clone();
@@ -371,6 +444,7 @@ export function createGalaxy(
   return {
     setStars,
     focusStar,
+    celebrateStar,
     setSubjectFilter,
     destroy: () => {
       cancelAnimationFrame(raf);
