@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.tts-bangla]
 verify_jwt = false
+
+[functions.generate-resources]
+verify_jwt = false
