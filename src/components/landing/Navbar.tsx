@@ -4,13 +4,30 @@ import { useState, useEffect, useRef } from "react";
 import { LogOut, Settings, User as UserIcon, GraduationCap, ChevronDown, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-const links = [
+type NavLink = { to: string; label: string };
+
+const PUBLIC_LINKS: NavLink[] = [
   { to: "/", label: "Home" },
+  { to: "/about", label: "About" },
+];
+
+const STUDENT_LINKS: NavLink[] = [
   { to: "/learn", label: "Learn" },
   { to: "/galaxy", label: "Galaxy" },
   { to: "/classrooms", label: "Classroom" },
-  { to: "/about", label: "About" },
-] as const;
+  { to: "/student", label: "My Progress" },
+];
+
+const TEACHER_LINKS: NavLink[] = [
+  { to: "/dashboard", label: "Dashboard" },
+  { to: "/classrooms", label: "Classrooms" },
+  { to: "/track", label: "Track Students" },
+];
+
+const PARENT_LINKS: NavLink[] = [
+  { to: "/track", label: "Track Students" },
+  { to: "/classrooms", label: "Classrooms" },
+];
 
 type Profile = { full_name: string | null; nickname: string | null; role: string | null };
 
@@ -73,6 +90,14 @@ export function Navbar() {
   const displayName = profile?.nickname || profile?.full_name || "তুমি";
   const initial = (displayName || "?").trim().charAt(0).toUpperCase();
   const isTeacher = profile?.role === "teacher";
+  const isParent = profile?.role === "parent";
+  const roleLinks: NavLink[] = !userId
+    ? PUBLIC_LINKS
+    : isTeacher
+      ? [PUBLIC_LINKS[0], ...TEACHER_LINKS, PUBLIC_LINKS[1]]
+      : isParent
+        ? [PUBLIC_LINKS[0], ...PARENT_LINKS, PUBLIC_LINKS[1]]
+        : [PUBLIC_LINKS[0], ...STUDENT_LINKS, PUBLIC_LINKS[1]];
 
   return (
     <motion.header
@@ -95,13 +120,13 @@ export function Navbar() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-1">
-          {links.map((l) => (
+          {roleLinks.map((l) => (
             <Link
               key={l.to}
               to={l.to}
               className="relative px-4 py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
               activeProps={{ className: "text-[var(--text-primary)]" }}
-              activeOptions={{ exact: true }}
+              activeOptions={{ exact: l.to === "/" }}
             >
               {({ isActive }) => (
                 <>
@@ -117,15 +142,6 @@ export function Navbar() {
               )}
             </Link>
           ))}
-          {userId && (
-            <Link
-              to={isTeacher ? "/dashboard" : "/student"}
-              className="relative px-4 py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-              activeProps={{ className: "text-[var(--text-primary)]" }}
-            >
-              {isTeacher ? "Dashboard" : "My Progress"}
-            </Link>
-          )}
         </nav>
 
         <div className="flex items-center gap-2">
