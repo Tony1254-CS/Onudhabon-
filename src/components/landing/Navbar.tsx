@@ -4,13 +4,30 @@ import { useState, useEffect, useRef } from "react";
 import { LogOut, Settings, User as UserIcon, GraduationCap, ChevronDown, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-const links = [
+type NavLink = { to: string; label: string };
+
+const PUBLIC_LINKS: NavLink[] = [
   { to: "/", label: "Home" },
+  { to: "/about", label: "About" },
+];
+
+const STUDENT_LINKS: NavLink[] = [
   { to: "/learn", label: "Learn" },
   { to: "/galaxy", label: "Galaxy" },
   { to: "/classrooms", label: "Classroom" },
-  { to: "/about", label: "About" },
-] as const;
+  { to: "/student", label: "My Progress" },
+];
+
+const TEACHER_LINKS: NavLink[] = [
+  { to: "/dashboard", label: "Dashboard" },
+  { to: "/classrooms", label: "Classrooms" },
+  { to: "/track", label: "Track Students" },
+];
+
+const PARENT_LINKS: NavLink[] = [
+  { to: "/track", label: "Track Students" },
+  { to: "/classrooms", label: "Classrooms" },
+];
 
 type Profile = { full_name: string | null; nickname: string | null; role: string | null };
 
