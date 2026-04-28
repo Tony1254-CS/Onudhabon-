@@ -61,6 +61,8 @@ function LearnPage() {
   const [attentionStatus, setAttentionStatus] = useState<AttentionStatus>("off");
   const attentionOverrideRef = useRef<CognitiveState | null>(null);
 
+  const [rightCollapsed, setRightCollapsed] = useState(false);
+
   const { send, streaming, provider } = useChatStream();
   const { supported: ttsSupported, speaking, speak, cancel: cancelSpeak, hasBanglaVoice } = useSpeech();
   const [autoSpeak, setAutoSpeak] = useState(false);
