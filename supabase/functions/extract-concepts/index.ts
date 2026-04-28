@@ -32,6 +32,7 @@ async function callJSON(messages: any[]): Promise<any | null> {
                       properties: {
                         name: { type: "string", description: "Concept name in Bangla" },
                         confidence: { type: "string", enum: ["strong", "weak", "gap"] },
+                        reason: { type: "string", description: "One short Bangla sentence (max 80 chars) explaining WHY this confidence — what the student showed or missed." },
                         related: { type: "array", items: { type: "string" } },
                       },
                       required: ["name", "confidence"],
