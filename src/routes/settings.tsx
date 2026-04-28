@@ -19,6 +19,8 @@ function SettingsPage() {
   const [nickname, setNickname] = useState("");
   const [classLevel, setClassLevel] = useState("");
   const [role, setRole] = useState("student");
+  const [studentCode, setStudentCode] = useState<string | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -32,7 +34,7 @@ function SettingsPage() {
       setEmail(session.user.email || "");
       const { data: p } = await supabase
         .from("profiles")
-        .select("full_name, nickname, class_level, role")
+        .select("full_name, nickname, class_level, role, student_code")
         .eq("id", session.user.id)
         .maybeSingle();
       if (!mounted) return;
@@ -41,11 +43,20 @@ function SettingsPage() {
         setNickname(p.nickname || "");
         setClassLevel(p.class_level || "");
         setRole(p.role || "student");
+        setStudentCode(p.student_code || null);
       }
       setLoading(false);
     })();
     return () => { mounted = false; };
   }, [navigate]);
+
+  const copyCode = async () => {
+    if (!studentCode) return;
+    await navigator.clipboard.writeText(studentCode);
+    setCodeCopied(true);
+    toast.success("কোড কপি হয়েছে");
+    setTimeout(() => setCodeCopied(false), 1500);
+  };
 
   const save = async () => {
     if (!userId) return;
