@@ -567,7 +567,7 @@ function LearnPage() {
 
 type Tab = { id: string; label: string; icon: React.ReactNode; content: React.ReactNode };
 
-function RightTabs({ tabs }: { tabs: Tab[] }) {
+function RightTabs({ tabs, onClose }: { tabs: Tab[]; onClose?: () => void }) {
   const [active, setActive] = useState(tabs[0]?.id);
   return (
     <>
@@ -576,16 +576,25 @@ function RightTabs({ tabs }: { tabs: Tab[] }) {
           <button
             key={t.id}
             onClick={() => setActive(t.id)}
-            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-[11px] uppercase tracking-[0.15em] transition-colors border-b-2 ${
+            className={`flex-1 flex items-center justify-center gap-1 px-2 py-2.5 text-[10px] uppercase tracking-[0.12em] transition-colors border-b-2 ${
               active === t.id
                 ? "border-amber-400 text-amber-300 bg-amber-400/[0.04]"
                 : "border-transparent text-[var(--text-secondary)] hover:text-white/80 hover:bg-white/[0.03]"
             }`}
           >
             {t.icon}
-            <span>{t.label}</span>
+            <span className="hidden 2xl:inline">{t.label}</span>
           </button>
         ))}
+        {onClose && (
+          <button
+            onClick={onClose}
+            title="প্যানেল লুকাও"
+            className="shrink-0 px-3 border-b-2 border-transparent text-white/50 hover:text-white hover:bg-white/[0.05] transition"
+          >
+            <PanelRightClose className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
       <div className="flex-1 min-h-0 relative">
         {tabs.map((t) => (
