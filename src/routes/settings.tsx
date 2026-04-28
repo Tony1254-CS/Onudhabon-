@@ -112,6 +112,7 @@ function SettingsPage() {
       toast.success(`"${cls.name}"-এ যোগ দেওয়া হয়েছে`);
       setJoinCode("");
       await loadEnrolled(userId);
+      navigate({ to: "/classrooms/$classroomId", params: { classroomId: cls.id } });
     } finally {
       setJoining(false);
     }
