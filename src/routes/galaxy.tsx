@@ -213,6 +213,76 @@ function GalaxyPage() {
         </div>
       )}
 
+      {/* Verdict Debug Overlay — verifies Socratic mastery logic end-to-end */}
+      <button
+        onClick={() => setDebugOpen((v) => !v)}
+        className="absolute bottom-4 right-4 z-30 flex items-center gap-1.5 rounded-full border border-white/15 bg-black/70 px-3 py-1.5 text-[11px] font-mono text-white/80 backdrop-blur-xl transition-colors hover:bg-black/90"
+        title="Show / hide Socratic verdict debug overlay"
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" style={{ boxShadow: "0 0 8px #34d399" }} />
+        Verdicts ({verdictBuckets.strong.length}/{verdictBuckets.weak.length}/{verdictBuckets.gap.length})
+      </button>
+
+      <AnimatePresence>
+        {debugOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            transition={{ duration: 0.18 }}
+            className="absolute bottom-16 right-4 z-30 w-[min(92vw,360px)] max-h-[60vh] overflow-y-auto rounded-2xl border border-white/15 bg-black/85 p-4 text-xs backdrop-blur-2xl"
+          >
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-white/60">Socratic Verdicts → Stars</p>
+              <button onClick={() => setDebugOpen(false)} className="rounded p-0.5 text-white/40 hover:text-white">✕</button>
+            </div>
+            <p className="mb-3 text-[10px] leading-relaxed text-white/40">
+              Only <span className="text-amber-300">strong</span> verdicts (mastery ≥ 0.9) currently promote a star to gold. Weak / gap shown for verification.
+            </p>
+
+            {(["strong", "weak", "gap"] as const).map((bucket) => {
+              const arr = verdictBuckets[bucket];
+              const meta = bucket === "strong"
+                ? { color: "#F59E0B", label: "STRONG → GOLD STAR", bg: "bg-amber-500/10", border: "border-amber-500/30" }
+                : bucket === "weak"
+                ? { color: "#60A5FA", label: "WEAK", bg: "bg-blue-500/10", border: "border-blue-500/30" }
+                : { color: "#EF4444", label: "GAP", bg: "bg-red-500/10", border: "border-red-500/30" };
+              return (
+                <div key={bucket} className={`mb-2 rounded-lg border ${meta.border} ${meta.bg} p-2`}>
+                  <div className="mb-1.5 flex items-center justify-between font-mono text-[10px] tracking-wider" style={{ color: meta.color }}>
+                    <span>{meta.label}</span>
+                    <span className="tabular-nums">{arr.length}</span>
+                  </div>
+                  {arr.length === 0 ? (
+                    <p className="text-[10px] text-white/30">— none —</p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {arr.slice(0, 30).map((s) => (
+                        <li key={s.id} className="flex items-center justify-between gap-2">
+                          <button
+                            onClick={() => galaxyRef.current?.focusStar(s.id)}
+                            className="truncate text-left font-bangla text-white/80 hover:text-white"
+                            title={s.concept}
+                          >
+                            {s.concept}
+                          </button>
+                          <span className="shrink-0 font-mono tabular-nums text-white/40">
+                            {Math.round(s.mastery * 100)}%
+                          </span>
+                        </li>
+                      ))}
+                      {arr.length > 30 && (
+                        <li className="text-[10px] text-white/30">… +{arr.length - 30} more</li>
+                      )}
+                    </ul>
+                  )}
+                </div>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Bottom legend */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
