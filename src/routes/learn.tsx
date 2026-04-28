@@ -494,43 +494,70 @@ function LearnPage() {
         </main>
 
         {/* RIGHT */}
-        <aside className="hidden xl:flex flex-col w-[360px] shrink-0 border-l border-[var(--border)] bg-[var(--bg-secondary)]/40 backdrop-blur-xl">
-          <RightTabs
-            tabs={[
-              {
-                id: "map",
-                label: "Mind Map",
-                icon: <Brain className="w-3.5 h-3.5" />,
-                content: (
-                  <div className="h-full relative">
-                    <div className="absolute top-2 right-2 z-10 text-[10px] uppercase tracking-[0.2em] text-[var(--text-secondary)] flex items-center gap-1.5">
-                      {extracting && (
-                        <span className="relative flex h-1.5 w-1.5">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent-purple)] opacity-75" />
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--accent-purple)]" />
-                        </span>
-                      )}
-                      {extracting ? "Extracting…" : "Live Mind Map"}
+        {rightCollapsed ? (
+          <button
+            onClick={() => setRightCollapsed(false)}
+            title="প্যানেল খোলো"
+            className="hidden xl:flex flex-col items-center gap-2 w-10 shrink-0 border-l border-[var(--border)] bg-[var(--bg-secondary)]/40 hover:bg-white/[0.04] py-3 text-white/60 hover:text-white transition"
+          >
+            <ChevronRight className="w-4 h-4 rotate-180" />
+            <Brain className="w-4 h-4" />
+            <BookOpen className="w-4 h-4" />
+            <Trophy className="w-4 h-4" />
+            <ExternalLink className="w-4 h-4" />
+          </button>
+        ) : (
+          <aside className="hidden xl:flex flex-col w-[380px] shrink-0 border-l border-[var(--border)] bg-[var(--bg-secondary)]/40 backdrop-blur-xl">
+            <RightTabs
+              onClose={() => setRightCollapsed(true)}
+              tabs={[
+                {
+                  id: "map",
+                  label: "Mind Map",
+                  icon: <Brain className="w-3.5 h-3.5" />,
+                  content: (
+                    <div className="h-full relative">
+                      <div className="absolute top-2 right-2 z-10 text-[10px] uppercase tracking-[0.2em] text-[var(--text-secondary)] flex items-center gap-1.5">
+                        {extracting && (
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent-purple)] opacity-75" />
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--accent-purple)]" />
+                          </span>
+                        )}
+                        {extracting ? "Extracting…" : "Live Mind Map"}
+                      </div>
+                      <MindMap concepts={concepts} extracting={extracting} onDelete={deleteConcept} />
                     </div>
-                    <MindMap concepts={concepts} extracting={extracting} onDelete={deleteConcept} />
-                  </div>
-                ),
-              },
-              {
-                id: "notes",
-                label: "Notes",
-                icon: <BookOpen className="w-3.5 h-3.5" />,
-                content: <NotesPanel topic={topic} online={online} />,
-              },
-              {
-                id: "state",
-                label: "State",
-                icon: <Activity className="w-3.5 h-3.5" />,
-                content: <CognitivePanel state={cognitiveState} />,
-              },
-            ]}
-          />
-        </aside>
+                  ),
+                },
+                {
+                  id: "notes",
+                  label: "Notes",
+                  icon: <BookOpen className="w-3.5 h-3.5" />,
+                  content: <NotesPanel topic={topic} online={online} />,
+                },
+                {
+                  id: "quiz",
+                  label: "Quiz",
+                  icon: <Trophy className="w-3.5 h-3.5" />,
+                  content: <QuizPanel topic={topic} online={online} />,
+                },
+                {
+                  id: "res",
+                  label: "Resources",
+                  icon: <ExternalLink className="w-3.5 h-3.5" />,
+                  content: <ResourcesPanel topic={topic} online={online} />,
+                },
+                {
+                  id: "state",
+                  label: "State",
+                  icon: <Activity className="w-3.5 h-3.5" />,
+                  content: <CognitivePanel state={cognitiveState} />,
+                },
+              ]}
+            />
+          </aside>
+        )}
       </div>
     </div>
   );
