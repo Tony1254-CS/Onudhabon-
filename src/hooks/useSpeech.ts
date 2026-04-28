@@ -75,30 +75,10 @@ async function waitForVoices() {
 const TTS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tts-bangla`;
 const KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-// Split long text on sentence boundaries (Bangla daari ও পূর্ণচ্ছেদ included)
-function splitForTTS(text: string, maxLen = 240): string[] {
-  const sentences = text
-    .split(/(?<=[।!?\.])\s+/u)
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const chunks: string[] = [];
-  let buf = "";
-  for (const s of sentences) {
-    if ((buf + " " + s).trim().length > maxLen && buf) {
-      chunks.push(buf.trim());
-      buf = s;
-    } else {
-      buf = (buf ? buf + " " : "") + s;
-    }
-  }
-  if (buf.trim()) chunks.push(buf.trim());
-  return chunks.length ? chunks : [text.slice(0, maxLen)];
-}
-
 const audioCache = new Map<string, string>(); // text -> object URL
 
 async function fetchTTSAudio(text: string): Promise<string | null> {
-  const key = text.slice(0, 200);
+  const key = text.slice(0, 240);
   const cached = audioCache.get(key);
   if (cached) return cached;
   try {
@@ -109,6 +89,7 @@ async function fetchTTSAudio(text: string): Promise<string | null> {
     });
     if (!r.ok) return null;
     const blob = await r.blob();
+    if (blob.size < 200) return null;
     const url = URL.createObjectURL(blob);
     audioCache.set(key, url);
     if (audioCache.size > 30) {
