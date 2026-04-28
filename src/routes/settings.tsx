@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Loader2, Save, User as UserIcon, Copy, Check, KeyRound } from "lucide-react";
+import { Loader2, Save, User as UserIcon, Copy, Check, KeyRound, GraduationCap, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/landing/Navbar";
 import { toast } from "sonner";
