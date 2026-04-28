@@ -90,6 +90,7 @@ function ClassroomsPage() {
     setName(""); setSubject("");
     toast.success(`তৈরি হয়েছে! কোড: ${join_code}`);
     setTeaching((p) => [data as Classroom, ...p]);
+    navigate({ to: "/classrooms/$classroomId", params: { classroomId: (data as Classroom).id } });
   };
 
   const joinClassroom = async () => {
@@ -106,6 +107,7 @@ function ClassroomsPage() {
     }
     toast.success(`${room.name} এ যোগ দিয়েছ!`);
     setCode("");
+    await refresh(userId);
     navigate({ to: "/classrooms/$classroomId", params: { classroomId: room.id } });
   };
 
