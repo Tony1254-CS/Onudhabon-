@@ -335,7 +335,7 @@ function LearnPage() {
                       if (autoSpeak) { cancelSpeak(); setAutoSpeak(false); }
                       else {
                         setAutoSpeak(true);
-                        if (!hasBanglaVoice) toast.message("এই ডিভাইসে native বাংলা voice নেই, তাই fallback voice ব্যবহার হবে।");
+                        if (!hasBanglaVoice) toast.message("ডিভাইসে বাংলা voice নেই — server-side বাংলা TTS ব্যবহার হবে।");
                       }
                     }}
                     title={autoSpeak ? "অটো-ভয়েস বন্ধ করো" : hasBanglaVoice ? "AI উত্তর বাংলায় শুনতে চালু করো" : "AI উত্তর fallback voice-এ শুনতে চালু করো"}
