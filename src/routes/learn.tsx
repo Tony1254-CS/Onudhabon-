@@ -38,6 +38,7 @@ export const Route = createFileRoute("/learn")({
 type Phase = "topic" | "teaching" | "socratic" | "result";
 
 const RAG_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-concepts`;
+const EVAL_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/socratic-evaluate`;
 const KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 function LearnPage() {
