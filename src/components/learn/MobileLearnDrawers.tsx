@@ -39,9 +39,9 @@ export function MobileLearnDrawers({
         <LeftPanel topic={topic} onTopic={(t) => { onTopic(t); setLeftOpen(false); }} nodes={nodes} mobile />
       </MobileSheet>
       <MobileSheet open={rightOpen} onClose={() => setRightOpen(false)} side="bottom" title="Live Mind Map">
-        <div className="flex flex-col h-full">
-          <div className="flex-1 min-h-[280px]"><MindMap concepts={concepts} onDelete={onDeleteConcept} /></div>
-          <div className="border-t border-white/10"><CognitivePanel state={cognitiveState} /></div>
+        <div className="flex flex-col h-full min-h-0">
+          <div className="flex-1 min-h-[60vh]"><MindMap concepts={concepts} onDelete={onDeleteConcept} /></div>
+          <div className="shrink-0 border-t border-white/10"><CognitivePanel state={cognitiveState} /></div>
         </div>
       </MobileSheet>
     </>

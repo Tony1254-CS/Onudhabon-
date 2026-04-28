@@ -15,7 +15,7 @@ export function MobileSheet({
   const positionClass =
     side === "left" ? "inset-y-0 left-0 w-[86%] max-w-sm border-r"
     : side === "right" ? "inset-y-0 right-0 w-[86%] max-w-sm border-l"
-    : "inset-x-0 bottom-0 h-[78vh] rounded-t-3xl border-t";
+    : "inset-x-0 bottom-0 h-[92vh] rounded-t-3xl border-t";
 
   return (
     <AnimatePresence>
@@ -43,7 +43,7 @@ export function MobileSheet({
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto">{children}</div>
+            <div className="flex-1 min-h-0 overflow-y-auto">{children}</div>
           </motion.div>
         </>
       )}
