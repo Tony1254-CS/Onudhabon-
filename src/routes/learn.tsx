@@ -500,7 +500,7 @@ function LearnPage() {
                   }
                   const intro: ChatMsg = { role: "user", content: `"${t}" বিষয়ের mind-map তৈরি করেছি। এবার প্রতিটি ধারণা ধরে ধরে শেখাও।` };
                   setMessages([intro]);
-                  streamReply([intro], t, "exploring", true, () => setShowTeachBack(true));
+                  streamReply([intro], t, "exploring", true, "teaching", () => setShowTeachBack(true));
                 } catch {
                   toast.error("Mind-map তৈরি ব্যর্থ — সরাসরি শেখা শুরু করছি।");
                   startTeaching(t);
