@@ -216,8 +216,30 @@ function SettingsPage() {
                     যোগ দাও
                   </button>
                 </div>
+
+                {enrolled.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-white/50">যোগদানকৃত ক্লাস ({enrolled.length})</p>
+                    {enrolled.map((c) => (
+                      <Link
+                        key={c.id}
+                        to="/classrooms/$classroomId"
+                        params={{ classroomId: c.id }}
+                        className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm hover:bg-white/[0.06] transition-colors"
+                      >
+                        <span className="flex items-center gap-2 min-w-0">
+                          <BookOpen className="h-3.5 w-3.5 text-blue-300 shrink-0" />
+                          <span className="truncate">{c.name}</span>
+                          {c.subject && <span className="text-xs text-white/40 truncate">· {c.subject}</span>}
+                        </span>
+                        <span className="font-mono text-[10px] text-white/40">{c.join_code}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+
                 <button
-                  onClick={() => navigate({ to: "/classrooms" })}
+                  onClick={() => navigate({ to: "/classrooms", search: {} })}
                   className="mt-3 text-xs text-blue-300 hover:text-blue-200 underline-offset-2 hover:underline"
                 >
                   সব ক্লাসরুম দেখো →
