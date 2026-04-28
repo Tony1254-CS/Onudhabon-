@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Loader2, Save, User as UserIcon, Copy, Check, KeyRound } from "lucide-react";
+import { Loader2, Save, User as UserIcon, Copy, Check, KeyRound, GraduationCap, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/landing/Navbar";
 import { toast } from "sonner";
@@ -23,6 +23,8 @@ function SettingsPage() {
   const [codeCopied, setCodeCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
+  const [joining, setJoining] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -74,6 +76,34 @@ function SettingsPage() {
       toast.error("সংরক্ষণ ব্যর্থ — আবার চেষ্টা করো");
     } else {
       toast.success("প্রোফাইল সংরক্ষিত হয়েছে");
+    }
+  };
+
+  const joinClassroom = async () => {
+    const code = joinCode.trim().toUpperCase();
+    if (code.length < 4) { toast.error("সঠিক কোড লিখো"); return; }
+    if (!userId) return;
+    setJoining(true);
+    try {
+      const { data: cls, error: cErr } = await supabase
+        .from("classrooms")
+        .select("id, name")
+        .eq("join_code", code)
+        .maybeSingle();
+      if (cErr || !cls) { toast.error("ক্লাসরুম পাওয়া যায়নি"); setJoining(false); return; }
+      const { error: mErr } = await supabase
+        .from("classroom_members")
+        .insert({ classroom_id: cls.id, student_id: userId });
+      if (mErr && !mErr.message.includes("duplicate")) {
+        toast.error("যোগ দেওয়া যায়নি — আবার চেষ্টা করো");
+        setJoining(false);
+        return;
+      }
+      toast.success(`"${cls.name}"-এ যোগ দেওয়া হয়েছে`);
+      setJoinCode("");
+      navigate({ to: "/classrooms/$classroomId", params: { classroomId: cls.id } });
+    } finally {
+      setJoining(false);
     }
   };
 
@@ -146,6 +176,42 @@ function SettingsPage() {
                     কপি
                   </button>
                 </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {role === "student" && (
+          <section className="mt-6 rounded-2xl border border-blue-400/20 bg-gradient-to-br from-blue-500/5 to-emerald-500/5 p-6">
+            <div className="flex items-start gap-3">
+              <GraduationCap className="mt-0.5 h-5 w-5 text-blue-300" />
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-white">শিক্ষকের ক্লাসরুমে যোগ দাও</h3>
+                <p className="mt-1 text-xs text-white/50">শিক্ষক থেকে পাওয়া ৬-অক্ষরের join code লিখো।</p>
+                <div className="mt-3 flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={joinCode}
+                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                    placeholder="যেমন: AB12CD"
+                    maxLength={10}
+                    className="flex-1 rounded-lg border border-white/10 bg-black/40 px-3.5 py-2.5 font-mono text-sm tracking-[0.2em] text-white placeholder-white/20 outline-none focus:border-blue-400/50"
+                  />
+                  <button
+                    onClick={joinClassroom}
+                    disabled={joining || !joinCode.trim()}
+                    className="flex items-center gap-1.5 rounded-lg bg-blue-500 px-4 py-2.5 text-xs font-semibold text-white hover:bg-blue-400 disabled:opacity-50 transition-colors"
+                  >
+                    {joining ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowRight className="h-3.5 w-3.5" />}
+                    যোগ দাও
+                  </button>
+                </div>
+                <button
+                  onClick={() => navigate({ to: "/classrooms" })}
+                  className="mt-3 text-xs text-blue-300 hover:text-blue-200 underline-offset-2 hover:underline"
+                >
+                  সব ক্লাসরুম দেখো →
+                </button>
               </div>
             </div>
           </section>
