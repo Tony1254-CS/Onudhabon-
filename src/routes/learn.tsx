@@ -118,6 +118,10 @@ function LearnPage() {
     c === "strong" ? "gold" : c === "weak" ? "cold-blue" : "fragile";
 
   const loadConceptsForTopic = async (t: string) => {
+    // Always try IDB first so it works offline / faster paint
+    const cached = await idbGet<ExtractedConcept[]>("concept_nodes", `topic_${t}`);
+    if (cached && Array.isArray(cached) && cached.length) setConcepts(cached);
+
     if (!userId || !online) return;
     const { data } = await supabase
       .from("concept_nodes")
@@ -129,11 +133,18 @@ function LearnPage() {
       name: r.concept,
       confidence: (r.mastery_level ?? 0) >= 0.9 ? "strong" : (r.mastery_level ?? 0) >= 0.4 ? "weak" : "gap",
     }));
-    setConcepts(restored);
+    if (restored.length) {
+      setConcepts(restored);
+      // Refresh local cache for offline use
+      await idbPut("concept_nodes", `topic_${t}`, restored);
+    }
   };
 
   const persistConcepts = async (topicVal: string, items: ExtractedConcept[]) => {
-    if (!userId || !online || !topicVal || !items.length) return;
+    if (!topicVal || !items.length) return;
+    // Cache locally for full offline mind-map
+    await idbPut("concept_nodes", `topic_${topicVal}`, items);
+    if (!userId || !online) return;
     const rows = items.map((c) => ({
       user_id: userId,
       concept: c.name,
