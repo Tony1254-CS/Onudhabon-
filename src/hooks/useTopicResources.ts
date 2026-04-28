@@ -167,3 +167,66 @@ export async function listOfflineNotes(): Promise<CachedItem<Notes>[]> {
 export async function listOfflineMindMaps(): Promise<CachedItem<MindMapData>[]> {
   return idbAll<CachedItem<MindMapData>>("mindmaps");
 }
+
+// ----- Resources (videos / articles / practice) -----
+export type ResourceVideo = { title: string; channel?: string; url: string; description: string };
+export type ResourceArticle = { title: string; source?: string; url: string; description: string };
+export type ResourcePractice = { title: string; url: string; description: string };
+export type Resources = {
+  videos: ResourceVideo[];
+  articles: ResourceArticle[];
+  practice?: ResourcePractice[];
+};
+
+export function useTopicResourceLinks(topic: string) {
+  const [data, setData] = useState<Resources | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fromCache, setFromCache] = useState(false);
+  const key = slug(topic);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!key) { setData(null); return; }
+    (async () => {
+      const cached = await idbGet<CachedItem<Resources>>("resources", key);
+      if (cancelled) return;
+      if (cached?.data) { setData(cached.data); setFromCache(true); }
+      else { setData(null); setFromCache(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [key]);
+
+  const generate = useCallback(async (force = false) => {
+    if (!topic.trim()) return;
+    setError(null);
+    if (!force) {
+      const cached = await idbGet<CachedItem<Resources>>("resources", key);
+      if (cached?.data) { setData(cached.data); setFromCache(true); return; }
+    }
+    if (typeof navigator !== "undefined" && !navigator.onLine) { setError("offline_no_cache"); return; }
+    setLoading(true);
+    try {
+      const result = await callFn<Resources>("generate-resources", { topic });
+      const item: CachedItem<Resources> = { topic, data: result, savedAt: Date.now() };
+      await idbPut("resources", key, item);
+      setData(result); setFromCache(false);
+    } catch (e) {
+      const cached = await idbGet<CachedItem<Resources>>("resources", key);
+      if (cached?.data) { setData(cached.data); setFromCache(true); }
+      else setError(e instanceof Error ? e.message : "failed");
+    } finally { setLoading(false); }
+  }, [topic, key]);
+
+  return { data, loading, error, fromCache, generate };
+}
+
+// ----- Quiz results persistence -----
+export type QuizResult = { topic: string; score: number; total: number; takenAt: number };
+export async function saveQuizResult(r: QuizResult) {
+  await idbPut("quiz_results", `${slug(r.topic)}_${r.takenAt}`, r);
+}
+export async function listQuizResults(): Promise<QuizResult[]> {
+  return idbAll<QuizResult>("quiz_results");
+}
+
