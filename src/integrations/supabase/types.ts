@@ -14,6 +14,109 @@ export type Database = {
   }
   public: {
     Tables: {
+      classroom_members: {
+        Row: {
+          classroom_id: string
+          id: string
+          joined_at: string
+          student_id: string
+        }
+        Insert: {
+          classroom_id: string
+          id?: string
+          joined_at?: string
+          student_id: string
+        }
+        Update: {
+          classroom_id?: string
+          id?: string
+          joined_at?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classroom_members_classroom_id_fkey"
+            columns: ["classroom_id"]
+            isOneToOne: false
+            referencedRelation: "classrooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classroom_posts: {
+        Row: {
+          author_id: string
+          body: string | null
+          classroom_id: string
+          created_at: string
+          file_path: string | null
+          id: string
+          kind: string
+          title: string
+          url: string | null
+        }
+        Insert: {
+          author_id: string
+          body?: string | null
+          classroom_id: string
+          created_at?: string
+          file_path?: string | null
+          id?: string
+          kind: string
+          title: string
+          url?: string | null
+        }
+        Update: {
+          author_id?: string
+          body?: string | null
+          classroom_id?: string
+          created_at?: string
+          file_path?: string | null
+          id?: string
+          kind?: string
+          title?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classroom_posts_classroom_id_fkey"
+            columns: ["classroom_id"]
+            isOneToOne: false
+            referencedRelation: "classrooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classrooms: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          join_code: string
+          name: string
+          subject: string | null
+          teacher_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          join_code: string
+          name: string
+          subject?: string | null
+          teacher_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          join_code?: string
+          name?: string
+          subject?: string | null
+          teacher_id?: string
+        }
+        Relationships: []
+      }
       concept_nodes: {
         Row: {
           concept: string
@@ -170,6 +273,7 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          nickname: string | null
           role: string
         }
         Insert: {
@@ -177,6 +281,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id: string
+          nickname?: string | null
           role?: string
         }
         Update: {
@@ -184,6 +289,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          nickname?: string | null
           role?: string
         }
         Relationships: []
@@ -226,7 +332,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_classroom_member: {
+        Args: { _classroom_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_classroom_teacher: {
+        Args: { _classroom_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

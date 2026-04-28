@@ -224,9 +224,12 @@ function LearnPage() {
           mode === "verdict"
             ? c.confidence
             : rank[c.confidence] >= rank[existing.confidence] ? c.confidence : existing.confidence;
+        // In verdict mode the AI's fresh reason wins; in merge mode prefer the new one if present, else keep old.
+        const nextReason = mode === "verdict" ? (c.reason ?? existing.reason) : (c.reason || existing.reason);
         map.set(c.name, {
           name: c.name,
           confidence: nextConfidence,
+          reason: nextReason,
           related: Array.from(new Set([...(existing.related ?? []), ...(c.related ?? [])])),
         });
       }
