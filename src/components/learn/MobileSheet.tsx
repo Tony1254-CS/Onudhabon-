@@ -15,7 +15,7 @@ export function MobileSheet({
   const positionClass =
     side === "left" ? "inset-y-0 left-0 w-[86%] max-w-sm border-r"
     : side === "right" ? "inset-y-0 right-0 w-[86%] max-w-sm border-l"
-    : "inset-x-0 bottom-0 h-[78vh] rounded-t-3xl border-t";
+    : "inset-x-0 bottom-0 h-[92vh] rounded-t-3xl border-t";
 
   return (
     <AnimatePresence>
