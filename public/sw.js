@@ -1,6 +1,6 @@
 /* Onudhabon AI service worker */
-const CACHE = "onudhabon-v1";
-const SHELL = ["/", "/learn", "/galaxy", "/dashboard", "/manifest.json", "/icon-192.png", "/icon-512.png"];
+const CACHE = "onudhabon-v2";
+const SHELL = ["/", "/learn", "/galaxy", "/dashboard", "/student", "/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

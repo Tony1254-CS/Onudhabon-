@@ -13,13 +13,15 @@ import { ChatInput } from "@/components/learn/ChatInput";
 import { TopicInput } from "@/components/learn/TopicInput";
 import { ResultCard } from "@/components/learn/ResultCard";
 import { NotesPanel } from "@/components/learn/NotesPanel";
+import { QuizPanel } from "@/components/learn/QuizPanel";
+import { ResourcesPanel } from "@/components/learn/ResourcesPanel";
 import { AttentionWidget, AttentionConsentModal, type AttentionStatus } from "@/components/learn/AttentionWidget";
 import { useChatStream, type ChatMsg } from "@/hooks/useChatStream";
 import { useCognitiveState, type Signal, type CognitiveState } from "@/hooks/useCognitiveState";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useSpeech } from "@/hooks/useSpeech";
-import { Volume2, VolumeX, Brain, BookOpen, Activity } from "lucide-react";
-import { cacheSession, idbPut } from "@/lib/idb";
+import { Volume2, VolumeX, Brain, BookOpen, Activity, Trophy, ExternalLink, ChevronRight, PanelRightClose } from "lucide-react";
+import { cacheSession, idbPut, idbGet } from "@/lib/idb";
 import { toast } from "sonner";
 
 type LearnSearch = { topic?: string };
@@ -58,6 +60,8 @@ function LearnPage() {
   const [showConsent, setShowConsent] = useState(false);
   const [attentionStatus, setAttentionStatus] = useState<AttentionStatus>("off");
   const attentionOverrideRef = useRef<CognitiveState | null>(null);
+
+  const [rightCollapsed, setRightCollapsed] = useState(false);
 
   const { send, streaming, provider } = useChatStream();
   const { supported: ttsSupported, speaking, speak, cancel: cancelSpeak, hasBanglaVoice } = useSpeech();
@@ -116,6 +120,10 @@ function LearnPage() {
     c === "strong" ? "gold" : c === "weak" ? "cold-blue" : "fragile";
 
   const loadConceptsForTopic = async (t: string) => {
+    // Always try IDB first so it works offline / faster paint
+    const cached = await idbGet<ExtractedConcept[]>("concept_nodes", `topic_${t}`);
+    if (cached && Array.isArray(cached) && cached.length) setConcepts(cached);
+
     if (!userId || !online) return;
     const { data } = await supabase
       .from("concept_nodes")
@@ -127,11 +135,18 @@ function LearnPage() {
       name: r.concept,
       confidence: (r.mastery_level ?? 0) >= 0.9 ? "strong" : (r.mastery_level ?? 0) >= 0.4 ? "weak" : "gap",
     }));
-    setConcepts(restored);
+    if (restored.length) {
+      setConcepts(restored);
+      // Refresh local cache for offline use
+      await idbPut("concept_nodes", `topic_${t}`, restored);
+    }
   };
 
   const persistConcepts = async (topicVal: string, items: ExtractedConcept[]) => {
-    if (!userId || !online || !topicVal || !items.length) return;
+    if (!topicVal || !items.length) return;
+    // Cache locally for full offline mind-map
+    await idbPut("concept_nodes", `topic_${topicVal}`, items);
+    if (!userId || !online) return;
     const rows = items.map((c) => ({
       user_id: userId,
       concept: c.name,
@@ -481,43 +496,70 @@ function LearnPage() {
         </main>
 
         {/* RIGHT */}
-        <aside className="hidden xl:flex flex-col w-[360px] shrink-0 border-l border-[var(--border)] bg-[var(--bg-secondary)]/40 backdrop-blur-xl">
-          <RightTabs
-            tabs={[
-              {
-                id: "map",
-                label: "Mind Map",
-                icon: <Brain className="w-3.5 h-3.5" />,
-                content: (
-                  <div className="h-full relative">
-                    <div className="absolute top-2 right-2 z-10 text-[10px] uppercase tracking-[0.2em] text-[var(--text-secondary)] flex items-center gap-1.5">
-                      {extracting && (
-                        <span className="relative flex h-1.5 w-1.5">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent-purple)] opacity-75" />
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--accent-purple)]" />
-                        </span>
-                      )}
-                      {extracting ? "Extracting…" : "Live Mind Map"}
+        {rightCollapsed ? (
+          <button
+            onClick={() => setRightCollapsed(false)}
+            title="প্যানেল খোলো"
+            className="hidden xl:flex flex-col items-center gap-2 w-10 shrink-0 border-l border-[var(--border)] bg-[var(--bg-secondary)]/40 hover:bg-white/[0.04] py-3 text-white/60 hover:text-white transition"
+          >
+            <ChevronRight className="w-4 h-4 rotate-180" />
+            <Brain className="w-4 h-4" />
+            <BookOpen className="w-4 h-4" />
+            <Trophy className="w-4 h-4" />
+            <ExternalLink className="w-4 h-4" />
+          </button>
+        ) : (
+          <aside className="hidden xl:flex flex-col w-[380px] shrink-0 border-l border-[var(--border)] bg-[var(--bg-secondary)]/40 backdrop-blur-xl">
+            <RightTabs
+              onClose={() => setRightCollapsed(true)}
+              tabs={[
+                {
+                  id: "map",
+                  label: "Mind Map",
+                  icon: <Brain className="w-3.5 h-3.5" />,
+                  content: (
+                    <div className="h-full relative">
+                      <div className="absolute top-2 right-2 z-10 text-[10px] uppercase tracking-[0.2em] text-[var(--text-secondary)] flex items-center gap-1.5">
+                        {extracting && (
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent-purple)] opacity-75" />
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--accent-purple)]" />
+                          </span>
+                        )}
+                        {extracting ? "Extracting…" : "Live Mind Map"}
+                      </div>
+                      <MindMap concepts={concepts} extracting={extracting} onDelete={deleteConcept} />
                     </div>
-                    <MindMap concepts={concepts} extracting={extracting} onDelete={deleteConcept} />
-                  </div>
-                ),
-              },
-              {
-                id: "notes",
-                label: "Notes",
-                icon: <BookOpen className="w-3.5 h-3.5" />,
-                content: <NotesPanel topic={topic} online={online} />,
-              },
-              {
-                id: "state",
-                label: "State",
-                icon: <Activity className="w-3.5 h-3.5" />,
-                content: <CognitivePanel state={cognitiveState} />,
-              },
-            ]}
-          />
-        </aside>
+                  ),
+                },
+                {
+                  id: "notes",
+                  label: "Notes",
+                  icon: <BookOpen className="w-3.5 h-3.5" />,
+                  content: <NotesPanel topic={topic} online={online} />,
+                },
+                {
+                  id: "quiz",
+                  label: "Quiz",
+                  icon: <Trophy className="w-3.5 h-3.5" />,
+                  content: <QuizPanel topic={topic} online={online} />,
+                },
+                {
+                  id: "res",
+                  label: "Resources",
+                  icon: <ExternalLink className="w-3.5 h-3.5" />,
+                  content: <ResourcesPanel topic={topic} online={online} />,
+                },
+                {
+                  id: "state",
+                  label: "State",
+                  icon: <Activity className="w-3.5 h-3.5" />,
+                  content: <CognitivePanel state={cognitiveState} />,
+                },
+              ]}
+            />
+          </aside>
+        )}
       </div>
     </div>
   );
@@ -525,7 +567,7 @@ function LearnPage() {
 
 type Tab = { id: string; label: string; icon: React.ReactNode; content: React.ReactNode };
 
-function RightTabs({ tabs }: { tabs: Tab[] }) {
+function RightTabs({ tabs, onClose }: { tabs: Tab[]; onClose?: () => void }) {
   const [active, setActive] = useState(tabs[0]?.id);
   return (
     <>
@@ -534,16 +576,25 @@ function RightTabs({ tabs }: { tabs: Tab[] }) {
           <button
             key={t.id}
             onClick={() => setActive(t.id)}
-            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-[11px] uppercase tracking-[0.15em] transition-colors border-b-2 ${
+            className={`flex-1 flex items-center justify-center gap-1 px-2 py-2.5 text-[10px] uppercase tracking-[0.12em] transition-colors border-b-2 ${
               active === t.id
                 ? "border-amber-400 text-amber-300 bg-amber-400/[0.04]"
                 : "border-transparent text-[var(--text-secondary)] hover:text-white/80 hover:bg-white/[0.03]"
             }`}
           >
             {t.icon}
-            <span>{t.label}</span>
+            <span className="hidden 2xl:inline">{t.label}</span>
           </button>
         ))}
+        {onClose && (
+          <button
+            onClick={onClose}
+            title="প্যানেল লুকাও"
+            className="shrink-0 px-3 border-b-2 border-transparent text-white/50 hover:text-white hover:bg-white/[0.05] transition"
+          >
+            <PanelRightClose className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
       <div className="flex-1 min-h-0 relative">
         {tabs.map((t) => (

@@ -293,6 +293,9 @@ function StudentDashboard() {
           <StatCard label="ধারাবাহিক দিন" value={streak} icon={Flame} accent="#EF4444" pulse={streak > 0} />
         </section>
 
+        {/* Mastered stars */}
+        <MasteredStars concepts={concepts} />
+
         {loading ? (
           <div className="grid h-64 place-items-center text-white/40">লোড হচ্ছে…</div>
         ) : (
@@ -542,5 +545,48 @@ function EmptyState({ icon: Icon, title, cta }: { icon: React.ComponentType<{ cl
       <p className="text-sm text-white/50">{title}</p>
       {cta}
     </div>
+  );
+}
+
+function MasteredStars({ concepts }: { concepts: Concept[] }) {
+  const mastered = concepts.filter((c) => (c.mastery_level ?? 0) >= 0.9);
+  if (mastered.length === 0) return null;
+  return (
+    <section className="mb-6 rounded-2xl border border-amber-400/20 bg-gradient-to-br from-amber-400/[0.04] via-transparent to-blue-400/[0.04] p-5 backdrop-blur-xl">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-amber-200">
+          <Sparkles className="h-4 w-4" />
+          তোমার তারা
+          <span className="rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-[10px] tabular-nums text-amber-200">
+            {mastered.length}
+          </span>
+        </h2>
+        <Link to="/galaxy" className="text-[11px] text-amber-300 hover:text-amber-200">গ্যালাক্সি দেখো →</Link>
+      </div>
+      <div className="flex flex-wrap gap-3">
+        {mastered.map((c) => (
+          <motion.div
+            key={c.id}
+            initial={{ opacity: 0, scale: 0.6 }}
+            animate={{ opacity: 1, scale: 1 }}
+            whileHover={{ scale: 1.08 }}
+            transition={{ type: "spring", stiffness: 220, damping: 16 }}
+            className="group relative flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1.5 text-xs font-medium text-amber-100"
+            style={{ boxShadow: "0 0 18px rgba(245,158,11,0.35), inset 0 0 12px rgba(245,158,11,0.1)" }}
+          >
+            <span
+              className="relative flex h-2.5 w-2.5"
+            >
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-300 opacity-60" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-300" style={{ boxShadow: "0 0 10px #fbbf24" }} />
+            </span>
+            <span className="truncate max-w-[160px]">{c.concept}</span>
+            {c.subject && (
+              <span className="text-[9px] text-amber-300/70 hidden sm:inline">· {c.subject}</span>
+            )}
+          </motion.div>
+        ))}
+      </div>
+    </section>
   );
 }
