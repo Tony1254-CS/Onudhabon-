@@ -15,6 +15,7 @@ import { ResultCard } from "@/components/learn/ResultCard";
 import { NotesPanel } from "@/components/learn/NotesPanel";
 import { QuizPanel } from "@/components/learn/QuizPanel";
 import { ResourcesPanel } from "@/components/learn/ResourcesPanel";
+import { MasteryBurst } from "@/components/learn/MasteryBurst";
 import { AttentionWidget, AttentionConsentModal, type AttentionStatus } from "@/components/learn/AttentionWidget";
 import { useChatStream, type ChatMsg } from "@/hooks/useChatStream";
 import { useCognitiveState, type Signal, type CognitiveState } from "@/hooks/useCognitiveState";
@@ -343,6 +344,7 @@ function LearnPage() {
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] antialiased">
       <Navbar />
+      <MasteryBurst />
       <div className="pt-16 h-screen flex">
         <LeftPanel topic={topic} onTopic={startTeaching} nodes={leftNodes} />
         <MobileLearnDrawers topic={topic} onTopic={startTeaching} nodes={leftNodes} concepts={concepts} cognitiveState={cognitiveState} onDeleteConcept={deleteConcept} online={online} />
