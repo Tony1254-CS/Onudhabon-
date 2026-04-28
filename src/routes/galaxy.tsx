@@ -128,6 +128,19 @@ function GalaxyPage() {
     fragile: stars.filter((s) => s.emotional === "cold-blue").length,
   }), [stars]);
 
+  // Debug: classify stars by Socratic verdict (mastery_level → strong/weak/gap)
+  const verdictBuckets = useMemo(() => {
+    const strong: GalaxyStar[] = [];
+    const weak: GalaxyStar[] = [];
+    const gap: GalaxyStar[] = [];
+    for (const s of stars) {
+      if (s.mastery >= 0.9) strong.push(s);
+      else if (s.mastery >= 0.4) weak.push(s);
+      else gap.push(s);
+    }
+    return { strong, weak, gap };
+  }, [stars]);
+
   if (authed === null) return <div className="min-h-screen bg-black" />;
   if (!authed) return null;
 
