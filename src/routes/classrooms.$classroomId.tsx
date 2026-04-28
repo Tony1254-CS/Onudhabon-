@@ -39,7 +39,7 @@ function ClassroomDetail() {
       if (!mounted) return;
       setUserId(session.user.id);
       const { data: room } = await supabase.from("classrooms").select("*").eq("id", classroomId).maybeSingle();
-      if (!room) { toast.error("ক্লাসরুম পাওয়া যায়নি"); navigate({ to: "/classrooms" }); return; }
+      if (!room) { toast.error("ক্লাসরুম পাওয়া যায়নি"); navigate({ to: "/classrooms", search: {} }); return; }
       if (mounted) { setClassroom(room as Classroom); setAuthorized(true); }
       await Promise.all([loadPosts(), loadMembers(room as Classroom)]);
       if (mounted) setLoading(false);
@@ -103,7 +103,7 @@ function ClassroomDetail() {
     if (!userId) return;
     await supabase.from("classroom_members").delete().eq("classroom_id", classroomId).eq("student_id", userId);
     toast.success("ক্লাস ছাড়লে");
-    navigate({ to: "/classrooms" });
+    navigate({ to: "/classrooms", search: {} });
   };
 
   if (loading || !classroom || !authorized) {
@@ -119,7 +119,7 @@ function ClassroomDetail() {
     <div className="min-h-screen bg-[#080B14] text-white antialiased">
       <Navbar />
       <main className="mx-auto max-w-5xl px-4 pb-20 pt-24">
-        <Link to="/classrooms" className="mb-4 inline-flex items-center gap-1.5 text-xs text-white/50 hover:text-white">
+        <Link to="/classrooms" search={{}} className="mb-4 inline-flex items-center gap-1.5 text-xs text-white/50 hover:text-white">
           <ArrowLeft className="h-3 w-3" /> সকল ক্লাসরুম
         </Link>
 
