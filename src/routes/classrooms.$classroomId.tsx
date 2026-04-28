@@ -23,6 +23,7 @@ function ClassroomDetail() {
   const [classroom, setClassroom] = useState<Classroom | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
+  const [memberCount, setMemberCount] = useState(0);
   const [profiles, setProfiles] = useState<Record<string, StudentProfile>>({});
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"stream" | "members" | "monitor">("stream");
@@ -42,14 +43,21 @@ function ClassroomDetail() {
     setPosts((data || []) as Post[]);
   };
 
-  const loadMembers = async () => {
-    const { data: mems, error } = await supabase
+  const loadMembers = async (viewerId: string, teacherView: boolean) => {
+    let query = supabase
       .from("classroom_members")
       .select("*")
       .eq("classroom_id", classroomId);
+
+    if (!teacherView) {
+      query = query.eq("student_id", viewerId);
+    }
+
+    const { data: mems, error } = await query;
     if (error) throw error;
     const rows = (mems || []) as Member[];
     setMembers(rows);
+    setMemberCount(rows.length);
     return rows;
   };
 
@@ -94,6 +102,18 @@ function ClassroomDetail() {
     let mounted = true;
     (async () => {
       try {
+        if (mounted) {
+          setLoading(true);
+          setAuthorized(false);
+          setAccessMessage(null);
+          setClassroom(null);
+          setPosts([]);
+          setMembers([]);
+          setMemberCount(0);
+          setProfiles({});
+          setConceptStats({});
+        }
+
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           if (mounted) setLoading(false);
@@ -145,14 +165,21 @@ function ClassroomDetail() {
           setAccessMessage(null);
         }
 
-        memberRows = await loadMembers();
+        memberRows = await loadMembers(session.user.id, teacherView);
         await loadPosts();
 
         if (teacherView) {
           await loadTeacherInsights(memberRows.map((m) => m.student_id));
         } else {
-          setProfiles({});
-          setConceptStats({});
+          const { data: selfProfile } = await supabase
+            .from("profiles")
+            .select("id, full_name, nickname, class_level")
+            .eq("id", session.user.id)
+            .maybeSingle();
+
+          if (mounted && selfProfile) {
+            setProfiles({ [selfProfile.id]: selfProfile as StudentProfile });
+          }
         }
       } catch (error) {
         console.error(error);
@@ -229,7 +256,7 @@ function ClassroomDetail() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{classroom.name}</h1>
             <p className="mt-1 text-sm text-white/50">
-              {classroom.subject || "সাধারণ"} • {members.length} জন শিক্ষার্থী • কোড <span className="font-mono text-amber-300">{classroom.join_code}</span>
+              {classroom.subject || "সাধারণ"} • {memberCount} জন শিক্ষার্থী • কোড <span className="font-mono text-amber-300">{classroom.join_code}</span>
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -247,7 +274,7 @@ function ClassroomDetail() {
         {/* Tabs */}
         <div className="mb-5 flex gap-1 rounded-xl border border-white/10 bg-white/[0.02] p-1">
           <TabBtn active={tab === "stream"} onClick={() => setTab("stream")} label="স্ট্রিম" />
-          <TabBtn active={tab === "members"} onClick={() => setTab("members")} label={`সদস্য (${members.length})`} />
+          <TabBtn active={tab === "members"} onClick={() => setTab("members")} label={`সদস্য (${memberCount})`} />
           {isTeacher && <TabBtn active={tab === "monitor"} onClick={() => setTab("monitor")} label="মনিটরিং" />}
         </div>
 
