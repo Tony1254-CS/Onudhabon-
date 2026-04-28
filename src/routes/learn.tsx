@@ -481,22 +481,42 @@ function LearnPage() {
         </main>
 
         {/* RIGHT */}
-        <aside className="hidden xl:flex flex-col w-[320px] shrink-0 border-l border-[var(--border)] bg-[var(--bg-secondary)]/40 backdrop-blur-xl">
-          <div className="h-[60%] border-b border-[var(--border)] relative">
-            <div className="absolute top-2 right-2 z-10 text-[10px] uppercase tracking-[0.2em] text-[var(--text-secondary)] flex items-center gap-1.5">
-              {extracting && (
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent-purple)] opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--accent-purple)]" />
-                </span>
-              )}
-              {extracting ? "Extracting…" : "Live Mind Map"}
-            </div>
-            <MindMap concepts={concepts} extracting={extracting} onDelete={deleteConcept} />
-          </div>
-          <div className="h-[40%]">
-            <CognitivePanel state={cognitiveState} />
-          </div>
+        <aside className="hidden xl:flex flex-col w-[360px] shrink-0 border-l border-[var(--border)] bg-[var(--bg-secondary)]/40 backdrop-blur-xl">
+          <RightTabs
+            tabs={[
+              {
+                id: "map",
+                label: "Mind Map",
+                icon: <Brain className="w-3.5 h-3.5" />,
+                content: (
+                  <div className="h-full relative">
+                    <div className="absolute top-2 right-2 z-10 text-[10px] uppercase tracking-[0.2em] text-[var(--text-secondary)] flex items-center gap-1.5">
+                      {extracting && (
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent-purple)] opacity-75" />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--accent-purple)]" />
+                        </span>
+                      )}
+                      {extracting ? "Extracting…" : "Live Mind Map"}
+                    </div>
+                    <MindMap concepts={concepts} extracting={extracting} onDelete={deleteConcept} />
+                  </div>
+                ),
+              },
+              {
+                id: "notes",
+                label: "Notes",
+                icon: <BookOpen className="w-3.5 h-3.5" />,
+                content: <NotesPanel topic={topic} online={online} />,
+              },
+              {
+                id: "state",
+                label: "State",
+                icon: <Activity className="w-3.5 h-3.5" />,
+                content: <CognitivePanel state={cognitiveState} />,
+              },
+            ]}
+          />
         </aside>
       </div>
     </div>
