@@ -56,6 +56,7 @@ function SettingsPage() {
         setRole(p.role || "student");
         setStudentCode(p.student_code || null);
       }
+      if ((p?.role || "student") === "student") await loadEnrolled(session.user.id);
       setLoading(false);
     })();
     return () => { mounted = false; };
