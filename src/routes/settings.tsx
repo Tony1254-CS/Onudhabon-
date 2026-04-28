@@ -25,6 +25,15 @@ function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [joining, setJoining] = useState(false);
+  const [enrolled, setEnrolled] = useState<{ id: string; name: string; subject: string | null; join_code: string }[]>([]);
+
+  const loadEnrolled = async (uid: string) => {
+    const { data: mems } = await supabase.from("classroom_members").select("classroom_id").eq("student_id", uid);
+    const ids = (mems || []).map((m) => m.classroom_id);
+    if (!ids.length) { setEnrolled([]); return; }
+    const { data: rooms } = await supabase.from("classrooms").select("id, name, subject, join_code").in("id", ids);
+    setEnrolled((rooms || []) as typeof enrolled);
+  };
 
   useEffect(() => {
     let mounted = true;
