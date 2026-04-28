@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, LogIn, Users, GraduationCap, Loader2, Copy, Check } from "lucide-react";
+import { Plus, LogIn, Users, GraduationCap, Loader2, Copy, Check, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/landing/Navbar";
 import { toast } from "sonner";
@@ -173,18 +173,41 @@ function ClassroomsPage() {
           </Panel>
         </div>
 
-        {isTeacher && teaching.length > 0 && (
+        {isTeacher && (
           <section className="mt-8">
             <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-white/70">
               <GraduationCap className="h-4 w-4" /> আমার ক্লাসরুম ({teaching.length})
             </h2>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {teaching.map((c) => <ClassroomCard key={c.id} c={c} showCode />)}
-            </div>
+            {teaching.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] py-8 text-center text-sm text-white/40">
+                এখনো কোনো ক্লাসরুম তৈরি করোনি — উপরে নাম দিয়ে তৈরি করো।
+              </p>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {teaching.map((c) => <ClassroomCard key={c.id} c={c} showCode />)}
+              </div>
+            )}
           </section>
         )}
 
-        {enrolled.length > 0 && (
+        {!isTeacher && (
+          <section className="mt-8">
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-white/70">
+              <Users className="h-4 w-4" /> যোগদানকৃত ক্লাস ({enrolled.length})
+            </h2>
+            {enrolled.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] py-8 text-center text-sm text-white/40">
+                এখনো কোনো ক্লাসে জয়েন করোনি — শিক্ষকের কোড দিয়ে উপরে জয়েন করো।
+              </p>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {enrolled.map((c) => <ClassroomCard key={c.id} c={c} />)}
+              </div>
+            )}
+          </section>
+        )}
+
+        {isTeacher && enrolled.length > 0 && (
           <section className="mt-8">
             <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-white/70">
               <Users className="h-4 w-4" /> যোগদানকৃত ক্লাস ({enrolled.length})
@@ -193,10 +216,6 @@ function ClassroomsPage() {
               {enrolled.map((c) => <ClassroomCard key={c.id} c={c} />)}
             </div>
           </section>
-        )}
-
-        {teaching.length === 0 && enrolled.length === 0 && (
-          <p className="mt-10 text-center text-sm text-white/40">এখনো কোনো ক্লাসরুম নেই — উপরে তৈরি করো বা জয়েন করো।</p>
         )}
       </main>
     </div>
@@ -215,7 +234,7 @@ function ClassroomCard({ c, showCode = false }: { c: Classroom; showCode?: boole
   return (
     <div className="group rounded-2xl border border-white/10 bg-white/[0.02] p-4 transition-[background-color,box-shadow] hover:bg-white/[0.04] hover:shadow-lg">
       <Link to="/classrooms/$classroomId" params={{ classroomId: c.id }} className="block">
-        <p className="text-base font-semibold text-white">{c.name}</p>
+        <p className="text-base font-semibold text-white group-hover:text-amber-200">{c.name}</p>
         {c.subject && <p className="mt-0.5 text-xs text-white/50">{c.subject}</p>}
       </Link>
       {showCode && (
@@ -227,6 +246,13 @@ function ClassroomCard({ c, showCode = false }: { c: Classroom; showCode?: boole
           <button onClick={() => copy(inviteLink)} className="text-[11px] text-blue-300 hover:text-blue-200 underline">ইনভাইট লিংক কপি</button>
         </div>
       )}
+      <Link
+        to="/classrooms/$classroomId"
+        params={{ classroomId: c.id }}
+        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-white/5 px-3 py-2 text-xs font-medium text-white hover:bg-white/10"
+      >
+        খোলো ও কন্টেন্ট দেখো <ArrowRight className="h-3 w-3" />
+      </Link>
     </div>
   );
 }
