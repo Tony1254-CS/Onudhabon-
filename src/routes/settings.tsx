@@ -127,6 +127,30 @@ function SettingsPage() {
           </div>
         </section>
 
+        {role === "student" && studentCode && (
+          <section className="mt-6 rounded-2xl border border-amber-400/20 bg-gradient-to-br from-amber-500/5 to-blue-500/5 p-6">
+            <div className="flex items-start gap-3">
+              <KeyRound className="mt-0.5 h-5 w-5 text-amber-300" />
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-white">তোমার স্টুডেন্ট কোড</h3>
+                <p className="mt-1 text-xs text-white/50">এই কোডটি বাবা-মা বা শিক্ষকের সাথে শেয়ার করো — তারা তোমার অগ্রগতি দেখতে পারবে।</p>
+                <div className="mt-3 flex items-center gap-2">
+                  <code className="rounded-lg bg-black/40 px-4 py-2.5 font-mono text-lg font-bold tracking-[0.3em] text-amber-200">
+                    {studentCode}
+                  </code>
+                  <button
+                    onClick={copyCode}
+                    className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-xs hover:bg-white/10"
+                  >
+                    {codeCopied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                    কপি
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
         <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.02] p-5 text-xs text-white/50">
           <div className="flex items-center gap-2 text-white/70">
             <UserIcon className="h-4 w-4" />
