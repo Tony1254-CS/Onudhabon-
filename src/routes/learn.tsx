@@ -12,12 +12,13 @@ import { MessageBubble, TypingDots } from "@/components/learn/MessageBubble";
 import { ChatInput } from "@/components/learn/ChatInput";
 import { TopicInput } from "@/components/learn/TopicInput";
 import { ResultCard } from "@/components/learn/ResultCard";
+import { NotesPanel } from "@/components/learn/NotesPanel";
 import { AttentionWidget, AttentionConsentModal, type AttentionStatus } from "@/components/learn/AttentionWidget";
 import { useChatStream, type ChatMsg } from "@/hooks/useChatStream";
 import { useCognitiveState, type Signal, type CognitiveState } from "@/hooks/useCognitiveState";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useSpeech } from "@/hooks/useSpeech";
-import { Volume2, VolumeX } from "lucide-react";
+import { Volume2, VolumeX, Brain, BookOpen, Activity } from "lucide-react";
 import { cacheSession, idbPut } from "@/lib/idb";
 import { toast } from "sonner";
 
