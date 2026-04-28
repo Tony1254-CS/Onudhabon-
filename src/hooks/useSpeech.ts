@@ -166,23 +166,21 @@ export function useSpeech() {
     cancelledRef.current = false;
     speechState.speaking = true;
     notify();
-    const chunks = splitForTTS(text);
-    // Pre-fetch in parallel for smooth playback
-    const urlsP = chunks.map((c) => fetchTTSAudio(c));
-    for (let i = 0; i < chunks.length; i++) {
-      if (cancelledRef.current) break;
-      const url = await urlsP[i];
-      if (!url || cancelledRef.current) continue;
-      const audio = new Audio(url);
-      audioElRef.current = audio;
-      try {
-        await new Promise<void>((resolve) => {
-          audio.onended = () => resolve();
-          audio.onerror = () => resolve();
-          audio.play().catch(() => resolve());
-        });
-      } catch { /* noop */ }
+    const url = await fetchTTSAudio(text);
+    if (!url || cancelledRef.current) {
+      speechState.speaking = false;
+      notify();
+      return false;
     }
+    const audio = new Audio(url);
+    audioElRef.current = audio;
+    try {
+      await new Promise<void>((resolve) => {
+        audio.onended = () => resolve();
+        audio.onerror = () => resolve();
+        audio.play().catch(() => resolve());
+      });
+    } catch { /* noop */ }
     audioElRef.current = null;
     speechState.speaking = false;
     notify();
