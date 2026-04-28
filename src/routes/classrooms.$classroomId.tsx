@@ -27,62 +27,145 @@ function ClassroomDetail() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"stream" | "members" | "monitor">("stream");
   const [authorized, setAuthorized] = useState(false);
+  const [accessMessage, setAccessMessage] = useState<string | null>(null);
 
   // Per-student concept stats (for monitoring tab)
   const [conceptStats, setConceptStats] = useState<Record<string, { count: number; avg: number; weakest?: string }>>({});
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { navigate({ to: "/login" }); return; }
-      if (!mounted) return;
-      setUserId(session.user.id);
-      const { data: room } = await supabase.from("classrooms").select("*").eq("id", classroomId).maybeSingle();
-      if (!room) { toast.error("ক্লাসরুম পাওয়া যায়নি"); navigate({ to: "/classrooms", search: {} }); return; }
-      if (mounted) { setClassroom(room as Classroom); setAuthorized(true); }
-      await Promise.all([loadPosts(), loadMembers(room as Classroom)]);
-      if (mounted) setLoading(false);
-    })();
-    return () => { mounted = false; };
-  }, [classroomId, navigate]);
-
   const loadPosts = async () => {
-    const { data } = await supabase.from("classroom_posts").select("*").eq("classroom_id", classroomId).order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("classroom_posts")
+      .select("*")
+      .eq("classroom_id", classroomId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
     setPosts((data || []) as Post[]);
   };
 
-  const loadMembers = async (room: Classroom) => {
-    const { data: mems } = await supabase.from("classroom_members").select("*").eq("classroom_id", classroomId);
-    setMembers((mems || []) as Member[]);
-    const ids = (mems || []).map((m) => m.student_id);
-    if (ids.length) {
-      const { data: profs } = await supabase.from("profiles").select("id, full_name, nickname, class_level").in("id", ids);
-      const map: Record<string, StudentProfile> = {};
-      (profs || []).forEach((p) => { map[p.id] = p as StudentProfile; });
-      setProfiles(map);
+  const loadMembers = async () => {
+    const { data: mems, error } = await supabase
+      .from("classroom_members")
+      .select("*")
+      .eq("classroom_id", classroomId);
+    if (error) throw error;
+    const rows = (mems || []) as Member[];
+    setMembers(rows);
+    return rows;
+  };
 
-      // Concept stats per student
-      const { data: nodes } = await supabase.from("concept_nodes").select("user_id, concept, mastery_level").in("user_id", ids);
-      const stats: Record<string, { count: number; sum: number; weakest?: { c: string; m: number } }> = {};
-      (nodes || []).forEach((n) => {
-        const s = stats[n.user_id] || { count: 0, sum: 0 };
-        s.count += 1;
-        s.sum += n.mastery_level || 0;
-        if (!s.weakest || (n.mastery_level || 0) < s.weakest.m) s.weakest = { c: n.concept, m: n.mastery_level || 0 };
-        stats[n.user_id] = s;
-      });
-      const out: Record<string, { count: number; avg: number; weakest?: string }> = {};
-      Object.entries(stats).forEach(([uid, s]) => {
-        out[uid] = { count: s.count, avg: s.count ? s.sum / s.count : 0, weakest: s.weakest?.c };
-      });
-      setConceptStats(out);
-    } else {
+  const loadTeacherInsights = async (studentIds: string[]) => {
+    if (!studentIds.length) {
       setProfiles({});
       setConceptStats({});
+      return;
     }
-    void room;
+
+    const [{ data: profs, error: profErr }, { data: nodes, error: nodeErr }] = await Promise.all([
+      supabase.from("profiles").select("id, full_name, nickname, class_level").in("id", studentIds),
+      supabase.from("concept_nodes").select("user_id, concept, mastery_level").in("user_id", studentIds),
+    ]);
+
+    if (profErr) throw profErr;
+    if (nodeErr) throw nodeErr;
+
+    const map: Record<string, StudentProfile> = {};
+    (profs || []).forEach((p) => {
+      map[p.id] = p as StudentProfile;
+    });
+    setProfiles(map);
+
+    const stats: Record<string, { count: number; sum: number; weakest?: { c: string; m: number } }> = {};
+    (nodes || []).forEach((n) => {
+      const s = stats[n.user_id] || { count: 0, sum: 0 };
+      s.count += 1;
+      s.sum += n.mastery_level || 0;
+      if (!s.weakest || (n.mastery_level || 0) < s.weakest.m) s.weakest = { c: n.concept, m: n.mastery_level || 0 };
+      stats[n.user_id] = s;
+    });
+
+    const out: Record<string, { count: number; avg: number; weakest?: string }> = {};
+    Object.entries(stats).forEach(([uid, s]) => {
+      out[uid] = { count: s.count, avg: s.count ? s.sum / s.count : 0, weakest: s.weakest?.c };
+    });
+    setConceptStats(out);
   };
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          if (mounted) setLoading(false);
+          navigate({ to: "/login" });
+          return;
+        }
+
+        if (!mounted) return;
+        setUserId(session.user.id);
+
+        const { data: room, error: roomError } = await supabase
+          .from("classrooms")
+          .select("*")
+          .eq("id", classroomId)
+          .maybeSingle();
+
+        if (roomError) throw roomError;
+        if (!room) {
+          toast.error("ক্লাসরুম পাওয়া যায়নি");
+          navigate({ to: "/classrooms", search: {} });
+          return;
+        }
+
+        const teacherView = room.teacher_id === session.user.id;
+        let memberRows: Member[] = [];
+
+        if (!teacherView) {
+          const { data: membership, error: membershipError } = await supabase
+            .from("classroom_members")
+            .select("id")
+            .eq("classroom_id", classroomId)
+            .eq("student_id", session.user.id)
+            .maybeSingle();
+
+          if (membershipError) throw membershipError;
+          if (!membership) {
+            if (mounted) {
+              setAccessMessage("এই ক্লাসরুমে প্রবেশের অনুমতি নেই। আগে ক্লাসে যোগ দাও।");
+              setAuthorized(false);
+              setLoading(false);
+            }
+            return;
+          }
+        }
+
+        if (mounted) {
+          setClassroom(room as Classroom);
+          setAuthorized(true);
+          setAccessMessage(null);
+        }
+
+        memberRows = await loadMembers();
+        await loadPosts();
+
+        if (teacherView) {
+          await loadTeacherInsights(memberRows.map((m) => m.student_id));
+        } else {
+          setProfiles({});
+          setConceptStats({});
+        }
+      } catch (error) {
+        console.error(error);
+        if (mounted) {
+          setAccessMessage("ক্লাসরুম খোলা যায়নি। আবার চেষ্টা করো।");
+          setAuthorized(false);
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [classroomId, navigate]);
 
   const isTeacher = !!classroom && !!userId && classroom.teacher_id === userId;
 
