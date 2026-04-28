@@ -32,6 +32,7 @@ function GalaxyPage() {
   const [filter, setFilter] = useState<string>("সব");
   const [selected, setSelected] = useState<GalaxyStar | null>(null);
   const [hovered, setHovered] = useState<GalaxyStar | null>(null);
+  const [debugOpen, setDebugOpen] = useState(false);
 
   // Auth + load
   useEffect(() => {
