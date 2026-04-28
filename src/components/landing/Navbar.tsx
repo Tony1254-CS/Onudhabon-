@@ -90,6 +90,14 @@ export function Navbar() {
   const displayName = profile?.nickname || profile?.full_name || "তুমি";
   const initial = (displayName || "?").trim().charAt(0).toUpperCase();
   const isTeacher = profile?.role === "teacher";
+  const isParent = profile?.role === "parent";
+  const roleLinks: NavLink[] = !userId
+    ? PUBLIC_LINKS
+    : isTeacher
+      ? [PUBLIC_LINKS[0], ...TEACHER_LINKS, PUBLIC_LINKS[1]]
+      : isParent
+        ? [PUBLIC_LINKS[0], ...PARENT_LINKS, PUBLIC_LINKS[1]]
+        : [PUBLIC_LINKS[0], ...STUDENT_LINKS, PUBLIC_LINKS[1]];
 
   return (
     <motion.header
