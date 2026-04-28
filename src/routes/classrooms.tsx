@@ -8,7 +8,10 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/classrooms")({
   head: () => ({ meta: [{ title: "ক্লাসরুম — অনুধাবন AI" }] }),
-  validateSearch: (s: Record<string, unknown>) => ({ join: (s.join as string) || undefined }),
+  validateSearch: (s: Record<string, unknown>): { join?: string } => {
+    const j = s.join;
+    return typeof j === "string" && j.length > 0 ? { join: j } : {};
+  },
   component: ClassroomsPage,
 });
 

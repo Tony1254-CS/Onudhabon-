@@ -20,6 +20,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ClassroomsRouteImport } from './routes/classrooms'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ClassroomsClassroomIdRouteImport } from './routes/classrooms.$classroomId'
 
 const StudentRoute = StudentRouteImport.update({
   id: '/student',
@@ -76,11 +77,16 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClassroomsClassroomIdRoute = ClassroomsClassroomIdRouteImport.update({
+  id: '/$classroomId',
+  path: '/$classroomId',
+  getParentRoute: () => ClassroomsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/classrooms': typeof ClassroomsRoute
+  '/classrooms': typeof ClassroomsRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
   '/galaxy': typeof GalaxyRoute
@@ -89,11 +95,12 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/student': typeof StudentRoute
+  '/classrooms/$classroomId': typeof ClassroomsClassroomIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/classrooms': typeof ClassroomsRoute
+  '/classrooms': typeof ClassroomsRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
   '/galaxy': typeof GalaxyRoute
@@ -102,12 +109,13 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/student': typeof StudentRoute
+  '/classrooms/$classroomId': typeof ClassroomsClassroomIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/classrooms': typeof ClassroomsRoute
+  '/classrooms': typeof ClassroomsRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
   '/galaxy': typeof GalaxyRoute
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/student': typeof StudentRoute
+  '/classrooms/$classroomId': typeof ClassroomsClassroomIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -131,6 +140,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/student'
+    | '/classrooms/$classroomId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -144,6 +154,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/student'
+    | '/classrooms/$classroomId'
   id:
     | '__root__'
     | '/'
@@ -157,12 +168,13 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/student'
+    | '/classrooms/$classroomId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
-  ClassroomsRoute: typeof ClassroomsRoute
+  ClassroomsRoute: typeof ClassroomsRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   DemoRoute: typeof DemoRoute
   GalaxyRoute: typeof GalaxyRoute
@@ -252,13 +264,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/classrooms/$classroomId': {
+      id: '/classrooms/$classroomId'
+      path: '/$classroomId'
+      fullPath: '/classrooms/$classroomId'
+      preLoaderRoute: typeof ClassroomsClassroomIdRouteImport
+      parentRoute: typeof ClassroomsRoute
+    }
   }
 }
+
+interface ClassroomsRouteChildren {
+  ClassroomsClassroomIdRoute: typeof ClassroomsClassroomIdRoute
+}
+
+const ClassroomsRouteChildren: ClassroomsRouteChildren = {
+  ClassroomsClassroomIdRoute: ClassroomsClassroomIdRoute,
+}
+
+const ClassroomsRouteWithChildren = ClassroomsRoute._addFileChildren(
+  ClassroomsRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
-  ClassroomsRoute: ClassroomsRoute,
+  ClassroomsRoute: ClassroomsRouteWithChildren,
   DashboardRoute: DashboardRoute,
   DemoRoute: DemoRoute,
   GalaxyRoute: GalaxyRoute,
