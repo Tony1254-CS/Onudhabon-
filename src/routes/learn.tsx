@@ -522,3 +522,40 @@ function LearnPage() {
     </div>
   );
 }
+
+type Tab = { id: string; label: string; icon: React.ReactNode; content: React.ReactNode };
+
+function RightTabs({ tabs }: { tabs: Tab[] }) {
+  const [active, setActive] = useState(tabs[0]?.id);
+  return (
+    <>
+      <div className="flex shrink-0 border-b border-[var(--border)] bg-black/30 backdrop-blur">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setActive(t.id)}
+            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-[11px] uppercase tracking-[0.15em] transition-colors border-b-2 ${
+              active === t.id
+                ? "border-amber-400 text-amber-300 bg-amber-400/[0.04]"
+                : "border-transparent text-[var(--text-secondary)] hover:text-white/80 hover:bg-white/[0.03]"
+            }`}
+          >
+            {t.icon}
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </div>
+      <div className="flex-1 min-h-0 relative">
+        {tabs.map((t) => (
+          <div
+            key={t.id}
+            className="absolute inset-0"
+            style={{ display: active === t.id ? "block" : "none" }}
+          >
+            {t.content}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
