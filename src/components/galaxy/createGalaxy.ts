@@ -48,6 +48,7 @@ function seededRand(seed: number) {
 export type GalaxyHandle = {
   setStars: (stars: GalaxyStar[]) => void;
   focusStar: (id: string) => void;
+  celebrateStar: (id: string) => void;
   setSubjectFilter: (subject: string | null) => void;
   destroy: () => void;
 };
