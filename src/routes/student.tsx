@@ -543,6 +543,106 @@ function StudentDashboard() {
   );
 }
 
+function InterventionCard({
+  iv,
+  onStart,
+  onSubmit,
+}: {
+  iv: Intervention;
+  onStart: (iv: Intervention) => void;
+  onSubmit: (iv: Intervention, response: string) => void;
+}) {
+  const [open, setOpen] = useState(iv.status === "assigned" || iv.status === "in_progress");
+  const [response, setResponse] = useState(iv.student_response || "");
+  const sevColor =
+    iv.severity === "critical" ? "#EF4444" :
+    iv.severity === "high" ? "#F59E0B" :
+    iv.severity === "medium" ? "#3B82F6" : "#10B981";
+  const statusLabel: Record<string, string> = {
+    assigned: "নতুন",
+    in_progress: "চলমান",
+    submitted: "জমা দেওয়া হয়েছে",
+    completed: "সম্পন্ন",
+    improved: "উন্নতি হয়েছে",
+    retry: "পুনরায় চেষ্টা",
+  };
+  const isDone = iv.status === "submitted" || iv.status === "completed" || iv.status === "improved";
+
+  return (
+    <li className="rounded-xl border border-white/10 bg-white/[0.02] p-3.5 transition-[box-shadow] hover:shadow-lg">
+      <button onClick={() => setOpen((v) => !v)} className="flex w-full items-start gap-3 text-left">
+        <span
+          className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+          style={{ backgroundColor: `${sevColor}22`, color: sevColor }}
+          aria-hidden
+        >
+          <Bell className="h-3.5 w-3.5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate text-sm font-semibold text-white">{iv.concept}</p>
+            <span
+              className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+              style={{ backgroundColor: `${sevColor}1A`, color: sevColor }}
+            >
+              {statusLabel[iv.status] || iv.status}
+            </span>
+          </div>
+          <p className="mt-1 line-clamp-2 text-xs text-white/60">{iv.suggested_action}</p>
+          <p className="mt-1 text-[10px] text-white/40">
+            {new Date(iv.assigned_at).toLocaleDateString("bn-BD", { day: "numeric", month: "short" })}
+            {iv.subject ? ` · ${iv.subject}` : ""}
+          </p>
+        </div>
+      </button>
+
+      {open && (
+        <div className="mt-3 space-y-2 border-t border-white/5 pt-3">
+          {!isDone ? (
+            <>
+              <label className="block text-[11px] uppercase tracking-wider text-white/50">তোমার উত্তর / কাজ</label>
+              <textarea
+                value={response}
+                onChange={(e) => setResponse(e.target.value)}
+                onFocus={() => onStart(iv)}
+                rows={3}
+                placeholder="তুমি যা শিখেছ বা যে কাজটা করেছ এখানে লেখো…"
+                className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-amber-500/40"
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  to="/learn"
+                  search={{ topic: iv.concept }}
+                  className="flex items-center gap-1 rounded-md bg-blue-500/20 px-3 py-1.5 text-xs font-medium text-blue-200 hover:bg-blue-500/30"
+                >
+                  <BookOpen className="h-3 w-3" /> অনুশীলন করো
+                </Link>
+                <button
+                  onClick={() => onSubmit(iv, response.trim())}
+                  disabled={!response.trim()}
+                  className="flex items-center gap-1 rounded-md bg-emerald-500/25 px-3 py-1.5 text-xs font-semibold text-emerald-200 hover:bg-emerald-500/35 disabled:opacity-40"
+                >
+                  <CheckCircle2 className="h-3 w-3" /> শিক্ষককে জমা দাও
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-[11px] uppercase tracking-wider text-white/50">তোমার জমা দেওয়া উত্তর</p>
+              <p className="rounded-lg bg-white/5 p-2.5 text-sm text-white/80">{iv.student_response || "—"}</p>
+              {iv.submitted_at && (
+                <p className="text-[10px] text-white/40">
+                  জমা: {new Date(iv.submitted_at).toLocaleString("bn-BD")}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </li>
+  );
+}
+
 function GoalItem({ goal, onToggle, onDelete }: { goal: Goal; onToggle: (g: Goal) => void; onDelete: (id: string) => void }) {
   const done = goal.status === "completed";
   const overdue = !done && goal.target_date && new Date(goal.target_date) < new Date();
