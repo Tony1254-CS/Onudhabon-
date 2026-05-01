@@ -387,6 +387,8 @@ function LearnPage() {
         const verdicts = j.concepts as ExtractedConcept[];
         mergeConcepts(verdicts, "verdict");
         persistConcepts(topicVal, verdicts, "explanation");
+        // Record exact misconceptions for any concept the AI judged a "gap".
+        recordMisconceptions(topicVal, verdicts, studentExplanation);
       }
     } catch { /* silent */ }
     finally { setExtracting(false); }
