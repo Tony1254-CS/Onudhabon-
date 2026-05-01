@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Link as LinkIcon, FileText, Upload, Trash2, Copy, Users, BarChart3, Loader2, Plus, ExternalLink, Download, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/landing/Navbar";
+import { StudentInterventionsTab } from "@/components/classroom/StudentInterventionsTab";
+import { Bell } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/classrooms/$classroomId")({
@@ -26,7 +28,8 @@ function ClassroomDetail() {
   const [memberCount, setMemberCount] = useState(0);
   const [profiles, setProfiles] = useState<Record<string, StudentProfile>>({});
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"stream" | "members" | "monitor">("stream");
+  const [tab, setTab] = useState<"stream" | "members" | "monitor" | "interventions">("stream");
+  const [unreadInterventions, setUnreadInterventions] = useState(0);
   const [authorized, setAuthorized] = useState(false);
   const [accessMessage, setAccessMessage] = useState<string | null>(null);
 
