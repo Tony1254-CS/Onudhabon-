@@ -239,11 +239,17 @@ function LearnPage() {
       if (next.state === "mastered" && prevNode.state !== "mastered") {
         newlyMasteredNames.push(c.name);
       }
+      // Merge prerequisites from AI extractor with whatever is already on the row.
+      const prevPrereqs: string[] = (prevRow?.prerequisites as string[] | null) ?? [];
+      const newPrereqs: string[] = c.prerequisites ?? [];
+      const mergedPrereqs = Array.from(new Set([...prevPrereqs, ...newPrereqs]))
+        .filter((p) => p && p !== c.name);
       return {
         user_id: userId,
         concept: c.name,
         subject: topicVal,
         ...toDbPatch(next),
+        prerequisites: mergedPrereqs,
       };
     });
 
