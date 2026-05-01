@@ -124,13 +124,24 @@ function LearnPage() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, streaming]);
 
-  // Derive left-panel concept nodes from extracted concepts
-  const leftNodes: ConceptNode[] = useMemo(() => concepts.map((c, i) => ({
-    id: `${i}-${c.name}`,
-    name: c.name,
-    mastery: c.confidence === "strong" ? 1 : c.confidence === "weak" ? 0.5 : 0.15,
-    emotional: c.confidence === "strong" ? "gold" : c.confidence === "weak" ? "cold-blue" : "fragile",
-  })), [concepts]);
+  // Derive left-panel concept nodes from extracted concepts.
+  // We don't have the full per-row score here, so we approximate state from the
+  // legacy 3-band confidence — close enough for a sidebar; the engine remains
+  // authoritative server-side.
+  const leftNodes: ConceptNode[] = useMemo(() => concepts.map((c, i) => {
+    const mastery = c.confidence === "strong" ? 0.9 : c.confidence === "weak" ? 0.5 : 0.25;
+    const state: MasteryState =
+      c.confidence === "strong" ? "mastered"
+      : c.confidence === "weak" ? "developing"
+      : "exposed";
+    return {
+      id: `${i}-${c.name}`,
+      name: c.name,
+      mastery,
+      emotional: stateToEmotional(state) as ConceptNode["emotional"],
+      state,
+    };
+  }), [concepts]);
 
 
   const loadConceptsForTopic = async (t: string) => {
