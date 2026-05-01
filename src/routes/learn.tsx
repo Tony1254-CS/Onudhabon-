@@ -145,14 +145,14 @@ function LearnPage() {
     if (!userId || !online) return;
     const { data } = await supabase
       .from("concept_nodes")
-      .select("concept, mastery_level, emotional_tag")
+      .select("concept, mastery_level, confidence, interaction_count, misconception_count, last_reviewed, state")
       .eq("user_id", userId)
       .eq("subject", t);
     if (!data) return;
-    const restored: ExtractedConcept[] = data.map((r) => ({
-      name: r.concept,
-      confidence: (r.mastery_level ?? 0) >= 0.9 ? "strong" : (r.mastery_level ?? 0) >= 0.4 ? "weak" : "gap",
-    }));
+    const restored: ExtractedConcept[] = data.map((r) => {
+      const node = fromDb(r as any);
+      return { name: r.concept, confidence: stateToConfidence(node.state) };
+    });
     if (restored.length) {
       setConcepts(restored);
       // Refresh local cache for offline use
@@ -160,46 +160,112 @@ function LearnPage() {
     }
   };
 
-  const persistConcepts = async (topicVal: string, items: ExtractedConcept[]) => {
+  // Persist a batch of concept observations through the progressive mastery engine.
+  // - kind="discussion": tutor talked about it. Cap at "exposed".
+  // - kind="explanation": student-led explanation in Socratic phase. Quality from extractor verdict.
+  // Concepts NEVER jump from unknown → mastered: caps + per-update score deltas enforce this.
+  const persistConcepts = async (
+    topicVal: string,
+    items: ExtractedConcept[],
+    kind: "discussion" | "explanation" = "discussion",
+  ) => {
     if (!topicVal || !items.length) return;
-    // Detect newly mastered concepts vs previous cache
-    const prev = (await idbGet<ExtractedConcept[]>("concept_nodes", `topic_${topicVal}`)) || [];
-    const prevMap = new Map(prev.map((p) => [p.name, p.confidence]));
-    const newlyMastered = items.filter(
-      (c) => c.confidence === "strong" && prevMap.get(c.name) !== "strong",
-    );
-    // Cache locally for full offline mind-map
+    // Cache locally for full offline mind-map (UI bands use legacy 3-band).
     await idbPut("concept_nodes", `topic_${topicVal}`, items);
 
-    if (newlyMastered.length) {
-      // Queue celebrations for the Galaxy page
+    if (!userId || !online) return;
+
+    // Fetch existing rows in one round-trip.
+    const names = items.map((c) => c.name);
+    const { data: existing } = await supabase
+      .from("concept_nodes")
+      .select("concept, mastery_level, confidence, interaction_count, misconception_count, last_reviewed, state")
+      .eq("user_id", userId)
+      .eq("subject", topicVal)
+      .in("concept", names);
+
+    const byName = new Map<string, any>();
+    (existing ?? []).forEach((r: any) => byName.set(r.concept, r));
+
+    const newlyMasteredNames: string[] = [];
+    const upserts = items.map((c) => {
+      const prevRow = byName.get(c.name);
+      const prevNode: MasteryNode = fromDb(prevRow);
+      const update = kind === "discussion"
+        ? { type: "discussion" as const }
+        : { type: "explanation" as const, quality: c.confidence };
+      const next = applyUpdate(prevNode, update);
+      if (next.state === "mastered" && prevNode.state !== "mastered") {
+        newlyMasteredNames.push(c.name);
+      }
+      return {
+        user_id: userId,
+        concept: c.name,
+        subject: topicVal,
+        ...toDbPatch(next),
+      };
+    });
+
+    // Celebrations: only when engine actually promoted to mastered.
+    if (newlyMasteredNames.length) {
       const queueRaw = localStorage.getItem("galaxy_celebrations");
       const queue: string[] = queueRaw ? JSON.parse(queueRaw) : [];
-      newlyMastered.forEach((c) => {
-        queue.push(`${topicVal}::${c.name}`);
-        toast.success(`🌟 নতুন তারা! "${c.name}" আয়ত্তে এসেছে`, {
+      newlyMasteredNames.forEach((name) => {
+        queue.push(`${topicVal}::${name}`);
+        toast.success(`🌟 নতুন তারা! "${name}" আয়ত্তে এসেছে`, {
           description: "তোমার জ্ঞানের মহাবিশ্বে যোগ হলো একটি উজ্জ্বল তারা।",
           duration: 4500,
         });
       });
       localStorage.setItem("galaxy_celebrations", JSON.stringify(queue.slice(-50)));
-      // Local in-page sparkle burst
-      window.dispatchEvent(new CustomEvent("mastery-burst", { detail: { count: newlyMastered.length } }));
+      window.dispatchEvent(new CustomEvent("mastery-burst", { detail: { count: newlyMasteredNames.length } }));
     }
 
-    if (!userId || !online) return;
-    const rows = items.map((c) => ({
-      user_id: userId,
-      concept: c.name,
-      subject: topicVal,
-      mastery_level: confidenceToMastery(c.confidence),
-      emotional_tag: confidenceToEmotional(c.confidence),
-      last_reviewed: new Date().toISOString(),
-    }));
     await supabase
       .from("concept_nodes")
-      .upsert(rows, { onConflict: "user_id,subject,concept" });
+      .upsert(upserts, { onConflict: "user_id,subject,concept" });
+
+    // Reflect server-side state back into the live UI confidence band.
+    setConcepts((prev) => {
+      const map = new Map(prev.map((p) => [p.name, p] as const));
+      upserts.forEach((u) => {
+        const cur = map.get(u.concept);
+        const conf = stateToConfidence(u.state as MasteryState);
+        map.set(u.concept, cur ? { ...cur, confidence: conf } : { name: u.concept, confidence: conf });
+      });
+      return Array.from(map.values());
+    });
   };
+
+  // Apply quiz outcomes (one row per question) to the concept the question is about.
+  // Currently quizzes are topic-scoped; we attribute results to the topic itself
+  // plus any currently-tracked concepts as light reinforcement.
+  const recordQuizOutcome = async (correctCount: number, total: number) => {
+    if (!topic || !userId || !online || total === 0) return;
+    // Topic-level bump first (always present as a concept row).
+    const { data: existing } = await supabase
+      .from("concept_nodes")
+      .select("concept, mastery_level, confidence, interaction_count, misconception_count, last_reviewed, state")
+      .eq("user_id", userId)
+      .eq("subject", topic);
+    const byName = new Map<string, any>();
+    (existing ?? []).forEach((r: any) => byName.set(r.concept, r));
+
+    const targets = [topic, ...concepts.map((c) => c.name)].filter(
+      (v, i, a) => a.indexOf(v) === i,
+    );
+    const upserts = targets.map((name) => {
+      let node = fromDb(byName.get(name));
+      // Apply each question outcome sequentially: `correctCount` correct, the rest wrong.
+      for (let i = 0; i < correctCount; i++) node = applyUpdate(node, { type: "quiz", correct: true });
+      for (let i = 0; i < total - correctCount; i++) node = applyUpdate(node, { type: "quiz", correct: false });
+      return { user_id: userId, concept: name, subject: topic, ...toDbPatch(node) };
+    });
+    await supabase
+      .from("concept_nodes")
+      .upsert(upserts, { onConflict: "user_id,subject,concept" });
+  };
+
 
   const deleteConcept = async (name: string) => {
     // Optimistic local removal
