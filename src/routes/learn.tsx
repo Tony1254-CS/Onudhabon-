@@ -702,7 +702,7 @@ function LearnPage() {
                   id: "quiz",
                   label: "Quiz",
                   icon: <Trophy className="w-3.5 h-3.5" />,
-                  content: <QuizPanel topic={topic} online={online} />,
+                  content: <QuizPanel topic={topic} online={online} onSubmit={({ score, total }) => recordQuizOutcome(score, total)} />,
                 },
                 {
                   id: "res",
