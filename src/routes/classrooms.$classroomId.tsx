@@ -288,6 +288,19 @@ function ClassroomDetail() {
           <TabBtn active={tab === "stream"} onClick={() => setTab("stream")} label="স্ট্রিম" />
           <TabBtn active={tab === "members"} onClick={() => setTab("members")} label={`সদস্য (${memberCount})`} />
           {isTeacher && <TabBtn active={tab === "monitor"} onClick={() => setTab("monitor")} label="মনিটরিং" />}
+          {!isTeacher && (
+            <button
+              onClick={() => { setTab("interventions"); setUnreadInterventions(0); }}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${tab === "interventions" ? "bg-white/10 text-white" : "text-white/50 hover:text-white hover:bg-white/5"}`}
+            >
+              <Bell className="h-3 w-3" /> হস্তক্ষেপ
+              {unreadInterventions > 0 && (
+                <span className="ml-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-bold text-black tabular-nums">
+                  {unreadInterventions}
+                </span>
+              )}
+            </button>
+          )}
         </div>
 
         {tab === "stream" && (
@@ -298,6 +311,9 @@ function ClassroomDetail() {
         )}
         {tab === "monitor" && isTeacher && (
           <MonitorTab members={members} profiles={profiles} stats={conceptStats} classAvg={classAvg} />
+        )}
+        {tab === "interventions" && !isTeacher && userId && (
+          <StudentInterventionsTab studentId={userId} />
         )}
       </main>
     </div>
