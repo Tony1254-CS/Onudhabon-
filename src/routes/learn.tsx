@@ -24,6 +24,22 @@ import { useSpeech } from "@/hooks/useSpeech";
 import { Volume2, VolumeX, Brain, BookOpen, Activity, Trophy, ExternalLink, ChevronRight, PanelRightClose } from "lucide-react";
 import { cacheSession, idbPut, idbGet } from "@/lib/idb";
 import { toast } from "sonner";
+import {
+  applyUpdate, fromDb, toDbPatch, deriveState, type MasteryState, type MasteryNode,
+} from "@/lib/masteryEngine";
+
+// Map the engine's progressive state → the legacy 3-band UI confidence used by MindMap/LeftPanel.
+const stateToConfidence = (s: MasteryState): ExtractedConcept["confidence"] =>
+  s === "mastered" || s === "practiced" ? "strong"
+  : s === "developing" || s === "exposed" ? "weak"
+  : "gap"; // unknown, fragile
+
+const stateToEmotional = (s: MasteryState) =>
+  s === "mastered" ? "gold"
+  : s === "fragile" ? "fragile"
+  : s === "practiced" ? "gold"
+  : s === "developing" || s === "exposed" ? "cold-blue"
+  : "fragile";
 
 type LearnSearch = { topic?: string };
 
