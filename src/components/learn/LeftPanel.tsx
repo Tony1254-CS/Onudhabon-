@@ -7,6 +7,8 @@ export type ConceptNode = {
   mastery: number; // 0..1
   emotional: "gold" | "cold-blue" | "fragile";
   state?: MasteryState;
+  prerequisites?: string[];
+  fragilePath?: string[];
 };
 
 const SUGGESTED = [
