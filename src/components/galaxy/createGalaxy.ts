@@ -11,38 +11,34 @@ export type GalaxyStar = {
   lastReviewed: string | null;
 };
 
+// Color mapping: gold for mastered, cold-blue for fragile, others muted
 const COLORS: Record<string, number> = {
-  gold: 0xf59e0b,
-  "cold-blue": 0x60a5fa,
-  fragile: 0xfb923c,
+  gold: 0xf59e0b,        // mastered → warm gold
+  "cold-blue": 0x60a5fa, // fragile → cold blue
+  fragile: 0x60a5fa,     // alias from mastery engine state
 };
-const DEFAULT_COLOR = 0x475569;
+const DEFAULT_COLOR = 0xfb923c; // developing → orange
 
-const SUBJECT_QUADRANTS: Record<string, THREE.Vector3> = {
-  পদার্থবিজ্ঞান: new THREE.Vector3(1, 1, 1),
-  রসায়ন: new THREE.Vector3(-1, 1, -1),
-  জীববিজ্ঞান: new THREE.Vector3(-1, -1, 1),
-  গণিত: new THREE.Vector3(1, -1, -1),
+// Each subject becomes its own orbital ring around the sun
+const SUBJECT_ORBITS: Record<string, { radius: number; tilt: number; color: number }> = {
+  পদার্থবিজ্ঞান: { radius: 18, tilt: 0.05, color: 0x3b82f6 },
+  রসায়ন: { radius: 28, tilt: 0.18, color: 0x8b5cf6 },
+  জীববিজ্ঞান: { radius: 38, tilt: -0.12, color: 0x10b981 },
+  গণিত: { radius: 48, tilt: 0.22, color: 0xf59e0b },
 };
+const FALLBACK_ORBITS = Object.values(SUBJECT_ORBITS);
 
-function quadrantFor(subject: string | null): THREE.Vector3 {
-  if (!subject) return new THREE.Vector3(0, 0, 0);
-  if (SUBJECT_QUADRANTS[subject]) return SUBJECT_QUADRANTS[subject];
-  // Hash-based fallback for unknown subjects
+function orbitFor(subject: string | null) {
+  if (!subject) return { radius: 24, tilt: 0, color: 0x64748b };
+  if (SUBJECT_ORBITS[subject]) return SUBJECT_ORBITS[subject];
   let h = 0;
   for (let i = 0; i < subject.length; i++) h = (h * 31 + subject.charCodeAt(i)) | 0;
-  const opts = Object.values(SUBJECT_QUADRANTS);
-  return opts[Math.abs(h) % opts.length];
+  return FALLBACK_ORBITS[Math.abs(h) % FALLBACK_ORBITS.length];
 }
 
 function colorFor(emotional: string | null): number {
   if (!emotional) return DEFAULT_COLOR;
   return COLORS[emotional] ?? DEFAULT_COLOR;
-}
-
-function seededRand(seed: number) {
-  let s = seed;
-  return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
 }
 
 export type GalaxyHandle = {
@@ -61,17 +57,26 @@ export function createGalaxy(
     onClick: (s: GalaxyStar) => void;
   },
 ): GalaxyHandle {
+  // Ensure container has dimensions (fallback to viewport if 0)
+  const initW = container.clientWidth || window.innerWidth;
+  const initH = container.clientHeight || window.innerHeight;
+
   // Renderer
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    alpha: false,
+    powerPreference: "high-performance",
+  });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  const w = container.clientWidth;
-  const h = container.clientHeight;
-  renderer.setSize(w, h);
+  renderer.setSize(initW, initH);
   renderer.setClearColor(0x000000, 1);
+  renderer.domElement.style.display = "block";
+  renderer.domElement.style.width = "100%";
+  renderer.domElement.style.height = "100%";
   container.appendChild(renderer.domElement);
 
   const labelRenderer = new CSS2DRenderer();
-  labelRenderer.setSize(w, h);
+  labelRenderer.setSize(initW, initH);
   labelRenderer.domElement.style.position = "absolute";
   labelRenderer.domElement.style.inset = "0";
   labelRenderer.domElement.style.pointerEvents = "none";
@@ -79,24 +84,54 @@ export function createGalaxy(
 
   // Scene & camera
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(55, w / h, 0.1, 500);
-  camera.position.set(0, 12, 70);
+  scene.fog = new THREE.FogExp2(0x000010, 0.006);
 
-  // Lights
-  scene.add(new THREE.AmbientLight(0x1a3a6e, 0.1));
-  const blueLight = new THREE.PointLight(0x3b82f6, 1.6, 200);
-  blueLight.position.set(40, 30, 40);
-  scene.add(blueLight);
-  const purpleLight = new THREE.PointLight(0x8b5cf6, 1.4, 200);
-  purpleLight.position.set(-40, -20, -30);
-  scene.add(purpleLight);
+  const camera = new THREE.PerspectiveCamera(50, initW / initH, 0.1, 1000);
+  camera.position.set(0, 35, 90);
+  camera.lookAt(0, 0, 0);
 
-  // Background particles (static, low cost)
+  // Lights — sun acts as the main light
+  scene.add(new THREE.AmbientLight(0x223355, 0.35));
+  const sunLight = new THREE.PointLight(0xffd28a, 2.2, 300, 1.4);
+  sunLight.position.set(0, 0, 0);
+  scene.add(sunLight);
+  const rimLight = new THREE.DirectionalLight(0x3b82f6, 0.4);
+  rimLight.position.set(50, 40, 50);
+  scene.add(rimLight);
+
+  // ============ THE SUN (center of the system) ============
+  const sunGroup = new THREE.Group();
+  const sunGeom = new THREE.SphereGeometry(4.5, 48, 48);
+  const sunMat = new THREE.MeshBasicMaterial({ color: 0xffb347 });
+  const sun = new THREE.Mesh(sunGeom, sunMat);
+  sunGroup.add(sun);
+  // Sun corona
+  const coronaGeom = new THREE.SphereGeometry(6.5, 32, 32);
+  const coronaMat = new THREE.MeshBasicMaterial({
+    color: 0xffa64d,
+    transparent: true,
+    opacity: 0.25,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  sunGroup.add(new THREE.Mesh(coronaGeom, coronaMat));
+  const flareGeom = new THREE.SphereGeometry(9, 32, 32);
+  const flareMat = new THREE.MeshBasicMaterial({
+    color: 0xffd47a,
+    transparent: true,
+    opacity: 0.08,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  sunGroup.add(new THREE.Mesh(flareGeom, flareMat));
+  scene.add(sunGroup);
+
+  // ============ Background starfield ============
   const bgGeom = new THREE.BufferGeometry();
-  const bgCount = 1500;
+  const bgCount = 2000;
   const positions = new Float32Array(bgCount * 3);
   for (let i = 0; i < bgCount; i++) {
-    const r = 80 + Math.random() * 80;
+    const r = 120 + Math.random() * 180;
     const t = Math.random() * Math.PI * 2;
     const p = Math.acos(2 * Math.random() - 1);
     positions[i * 3] = r * Math.sin(p) * Math.cos(t);
@@ -105,45 +140,59 @@ export function createGalaxy(
   }
   bgGeom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
   const bgMat = new THREE.PointsMaterial({
-    color: 0xffffff, size: 0.04, sizeAttenuation: true, transparent: true, opacity: 0.55,
+    color: 0xffffff,
+    size: 0.5,
+    sizeAttenuation: true,
+    transparent: true,
+    opacity: 0.7,
   });
   scene.add(new THREE.Points(bgGeom, bgMat));
 
-  // Star groups
-  const starsGroup = new THREE.Group();
-  const linesGroup = new THREE.Group();
-  scene.add(starsGroup);
-  scene.add(linesGroup);
+  // ============ Orbit/planet groups ============
+  const orbitsGroup = new THREE.Group();
+  const planetsGroup = new THREE.Group();
+  scene.add(orbitsGroup);
+  scene.add(planetsGroup);
 
   // Controls
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.06;
   controls.autoRotate = true;
-  controls.autoRotateSpeed = 0.4;
-  controls.minDistance = 12;
-  controls.maxDistance = 160;
+  controls.autoRotateSpeed = 0.3;
+  controls.minDistance = 15;
+  controls.maxDistance = 220;
+  controls.target.set(0, 0, 0);
 
   let lastInteraction = 0;
-  const onUserInteract = () => {
+  controls.addEventListener("start", () => {
     controls.autoRotate = false;
     lastInteraction = performance.now();
-  };
-  controls.addEventListener("start", onUserInteract);
+  });
 
   // Raycaster
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2(-10, -10);
-  let hovered: { mesh: THREE.Mesh; star: GalaxyStar; label: CSS2DObject; baseScale: number } | null = null;
 
-  // Star data store
-  type StarRef = { mesh: THREE.Mesh; glow: THREE.Mesh; star: GalaxyStar; label: CSS2DObject; baseScale: number };
+  // Star/planet refs
+  type StarRef = {
+    mesh: THREE.Mesh;
+    glow: THREE.Mesh;
+    pivot: THREE.Group; // rotates around sun
+    star: GalaxyStar;
+    label: CSS2DObject;
+    baseScale: number;
+    angularSpeed: number;
+    tilt: number;
+    radius: number;
+  };
   const starRefs: StarRef[] = [];
+  let hovered: StarRef | null = null;
   let currentFilter: string | null = null;
 
   function clearStars() {
-    starsGroup.clear();
-    linesGroup.clear();
+    while (planetsGroup.children.length) planetsGroup.remove(planetsGroup.children[0]);
+    while (orbitsGroup.children.length) orbitsGroup.remove(orbitsGroup.children[0]);
     starRefs.forEach((s) => {
       s.label.element.remove();
       s.label.removeFromParent();
@@ -153,111 +202,122 @@ export function createGalaxy(
 
   function buildLabel(star: GalaxyStar): CSS2DObject {
     const div = document.createElement("div");
-    div.className = "galaxy-label";
     div.style.cssText =
-      "padding:4px 10px;border-radius:9999px;background:rgba(8,11,20,0.85);border:1px solid rgba(255,255,255,0.08);" +
+      "padding:4px 10px;border-radius:9999px;background:rgba(8,11,20,0.85);border:1px solid rgba(255,255,255,0.1);" +
       "color:#F1F5F9;font-family:'Hind Siliguri',sans-serif;font-size:11px;white-space:nowrap;backdrop-filter:blur(8px);" +
-      "opacity:0;transition:opacity 200ms ease;pointer-events:none;transform:translate(-50%,-140%);";
-    div.innerHTML = `<span>${star.concept}</span> <span style="color:#94A3B8">· ${Math.round(star.mastery * 100)}%</span>`;
-    const obj = new CSS2DObject(div);
-    return obj;
+      "opacity:0;transition:opacity 200ms ease;pointer-events:none;transform:translate(-50%,-160%);";
+    div.innerHTML = `<span>${star.concept}</span> <span style="color:#94A3B8">· ${Math.round(
+      star.mastery * 100,
+    )}%</span>`;
+    return new CSS2DObject(div);
   }
 
   function setStars(stars: GalaxyStar[]) {
     clearStars();
-    if (stars.length === 0) {
-      renderOnce();
-      return;
-    }
+    if (stars.length === 0) return;
 
-    // Group by subject for connection lines
-    const bySubject = new Map<string, StarRef[]>();
-
-    stars.forEach((star, i) => {
-      const rand = seededRand(i + 1);
-      const quad = quadrantFor(star.subject);
-      const r = 8 + rand() * 32;
-      const theta = rand() * Math.PI * 2;
-      const phi = Math.acos(2 * rand() - 1);
-      const pos = new THREE.Vector3(
-        r * Math.sin(phi) * Math.cos(theta) * (0.6 + 0.4 * Math.sign(quad.x || 1)),
-        r * Math.sin(phi) * Math.sin(theta) * (0.6 + 0.4 * Math.sign(quad.y || 1)),
-        r * Math.cos(phi) * (0.6 + 0.4 * Math.sign(quad.z || 1)),
-      );
-      // Bias toward quadrant
-      pos.add(quad.clone().multiplyScalar(8));
-
-      const size = 0.5 + star.mastery * 2;
-      const color = colorFor(star.emotional);
-
-      const geom = new THREE.SphereGeometry(size, 8, 8);
-      const mat = new THREE.MeshStandardMaterial({
-        color,
-        emissive: color,
-        emissiveIntensity: 0.4 + star.mastery * 1.6,
-        roughness: 0.4,
-      });
-      const mesh = new THREE.Mesh(geom, mat);
-      mesh.position.copy(pos);
-      mesh.userData.starId = star.id;
-      starsGroup.add(mesh);
-
-      // Glow halo
-      const glowGeom = new THREE.SphereGeometry(size * 2.4, 8, 8);
-      const glowMat = new THREE.MeshBasicMaterial({
-        color, transparent: true, opacity: 0.15, depthWrite: false,
-      });
-      const glow = new THREE.Mesh(glowGeom, glowMat);
-      glow.position.copy(pos);
-      starsGroup.add(glow);
-
-      const label = buildLabel(star);
-      label.position.copy(pos);
-      scene.add(label);
-
-      const ref: StarRef = { mesh, glow, star, label, baseScale: 1 };
-      starRefs.push(ref);
-      const key = star.subject ?? "_";
+    // Group by subject so same-subject planets share an orbital ring
+    const bySubject = new Map<string, GalaxyStar[]>();
+    stars.forEach((s) => {
+      const key = s.subject ?? "_other";
       if (!bySubject.has(key)) bySubject.set(key, []);
-      bySubject.get(key)!.push(ref);
+      bySubject.get(key)!.push(s);
     });
 
-    // Connection lines per subject
-    const linePositions: number[] = [];
-    bySubject.forEach((group) => {
-      if (group.length < 2) return;
-      // Connect each to nearest 2 in same group
-      group.forEach((a) => {
-        const others = group
-          .filter((b) => b !== a)
-          .map((b) => ({ b, d: a.mesh.position.distanceTo(b.mesh.position) }))
-          .sort((x, y) => x.d - y.d)
-          .slice(0, 2);
-        others.forEach(({ b }) => {
-          linePositions.push(a.mesh.position.x, a.mesh.position.y, a.mesh.position.z);
-          linePositions.push(b.mesh.position.x, b.mesh.position.y, b.mesh.position.z);
+    // Draw orbit ring lines
+    bySubject.forEach((_group, subject) => {
+      const orbit = orbitFor(subject === "_other" ? null : subject);
+      const ringGeom = new THREE.RingGeometry(orbit.radius - 0.05, orbit.radius + 0.05, 128);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: orbit.color,
+        transparent: true,
+        opacity: 0.18,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      });
+      const ring = new THREE.Mesh(ringGeom, ringMat);
+      ring.rotation.x = Math.PI / 2 + orbit.tilt;
+      orbitsGroup.add(ring);
+    });
+
+    // Place planets along their subject's orbit
+    bySubject.forEach((group, subject) => {
+      const orbit = orbitFor(subject === "_other" ? null : subject);
+      const n = group.length;
+      group.forEach((star, i) => {
+        // Distribute around the ring with a small jitter for variety
+        const angle = (i / Math.max(n, 1)) * Math.PI * 2 + (i * 0.13);
+        const size = 0.6 + star.mastery * 1.6;
+        const color = colorFor(star.emotional);
+
+        // Pivot rotates around the sun → orbital motion
+        const pivot = new THREE.Group();
+        pivot.rotation.y = angle;
+        pivot.rotation.z = orbit.tilt;
+        planetsGroup.add(pivot);
+
+        // Planet body
+        const geom = new THREE.SphereGeometry(size, 24, 24);
+        const mat = new THREE.MeshStandardMaterial({
+          color,
+          emissive: color,
+          emissiveIntensity: 0.6 + star.mastery * 1.2,
+          roughness: 0.45,
+          metalness: 0.15,
+        });
+        const mesh = new THREE.Mesh(geom, mat);
+        mesh.position.set(orbit.radius, 0, 0);
+        mesh.userData.starId = star.id;
+        pivot.add(mesh);
+
+        // Glow halo
+        const glowGeom = new THREE.SphereGeometry(size * 2.2, 16, 16);
+        const glowMat = new THREE.MeshBasicMaterial({
+          color,
+          transparent: true,
+          opacity: 0.22,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        });
+        const glow = new THREE.Mesh(glowGeom, glowMat);
+        glow.position.copy(mesh.position);
+        pivot.add(glow);
+
+        // Label follows planet world position (added to mesh as child so it tracks)
+        const label = buildLabel(star);
+        label.position.set(0, size + 1.2, 0);
+        mesh.add(label);
+
+        // Outer planets orbit slower (Kepler-ish vibe)
+        const angularSpeed = 0.0012 * (30 / orbit.radius);
+
+        starRefs.push({
+          mesh,
+          glow,
+          pivot,
+          star,
+          label,
+          baseScale: 1,
+          angularSpeed,
+          tilt: orbit.tilt,
+          radius: orbit.radius,
         });
       });
     });
-    if (linePositions.length) {
-      const lineGeom = new THREE.BufferGeometry();
-      lineGeom.setAttribute("position", new THREE.Float32BufferAttribute(linePositions, 3));
-      const lineMat = new THREE.LineBasicMaterial({
-        color: 0x3b82f6, transparent: true, opacity: 0.15,
-      });
-      linesGroup.add(new THREE.LineSegments(lineGeom, lineMat));
-    }
 
     applyFilter();
-    renderOnce();
   }
 
   function applyFilter() {
     starRefs.forEach((s) => {
       const visible = !currentFilter || s.star.subject === currentFilter;
-      s.mesh.visible = visible;
-      s.glow.visible = visible;
+      s.pivot.visible = visible;
       s.label.element.style.display = visible ? "" : "none";
+    });
+    // Also hide orbit rings when filtering
+    orbitsGroup.children.forEach((ring, idx) => {
+      void idx;
+      ring.visible = true;
     });
   }
 
@@ -271,57 +331,65 @@ export function createGalaxy(
     if (!ref) return;
     controls.autoRotate = false;
     lastInteraction = performance.now();
-    const target = ref.mesh.position.clone();
-    const camTarget = target.clone().add(new THREE.Vector3(0, 4, 18));
-    animateCamera(camTarget, target);
-    // pulse
-    ref.baseScale = 1.6;
-    setTimeout(() => { ref.baseScale = 1; }, 1200);
+    const worldPos = new THREE.Vector3();
+    ref.mesh.getWorldPosition(worldPos);
+    const dir = worldPos.clone().normalize();
+    const camTarget = worldPos.clone().add(dir.multiplyScalar(12)).add(new THREE.Vector3(0, 4, 0));
+    animateCamera(camTarget, worldPos);
+    ref.baseScale = 1.8;
+    setTimeout(() => { ref.baseScale = 1; }, 1400);
   }
 
   function celebrateStar(id: string) {
     const ref = starRefs.find((s) => s.star.id === id);
     if (!ref) return;
-    // Camera fly-in
     focusStar(id);
-    // Big pulse
-    ref.baseScale = 2.4;
+    ref.baseScale = 2.6;
     setTimeout(() => { ref.baseScale = 1.2; }, 1400);
 
-    // Sparkle burst — 60 small points exploding outward then fading
+    const worldPos = new THREE.Vector3();
+    ref.mesh.getWorldPosition(worldPos);
+
+    // Sparkle burst
     const burstCount = 60;
     const burstGeom = new THREE.BufferGeometry();
     const burstPos = new Float32Array(burstCount * 3);
     const velocities: THREE.Vector3[] = [];
     for (let i = 0; i < burstCount; i++) {
-      burstPos[i * 3] = ref.mesh.position.x;
-      burstPos[i * 3 + 1] = ref.mesh.position.y;
-      burstPos[i * 3 + 2] = ref.mesh.position.z;
+      burstPos[i * 3] = worldPos.x;
+      burstPos[i * 3 + 1] = worldPos.y;
+      burstPos[i * 3 + 2] = worldPos.z;
       const v = new THREE.Vector3(
-        (Math.random() - 0.5) * 2,
-        (Math.random() - 0.5) * 2,
-        (Math.random() - 0.5) * 2,
+        Math.random() - 0.5,
+        Math.random() - 0.5,
+        Math.random() - 0.5,
       ).normalize().multiplyScalar(0.15 + Math.random() * 0.25);
       velocities.push(v);
     }
     burstGeom.setAttribute("position", new THREE.BufferAttribute(burstPos, 3));
     const burstMat = new THREE.PointsMaterial({
-      color: 0xfde047, size: 0.6, transparent: true, opacity: 1,
-      sizeAttenuation: true, depthWrite: false,
+      color: 0xfde047,
+      size: 0.6,
+      transparent: true,
+      opacity: 1,
+      sizeAttenuation: true,
+      depthWrite: false,
       blending: THREE.AdditiveBlending,
     });
     const burst = new THREE.Points(burstGeom, burstMat);
     scene.add(burst);
 
-    // Expanding gold ring halo
     const ringGeom = new THREE.RingGeometry(0.5, 0.6, 48);
     const ringMat = new THREE.MeshBasicMaterial({
-      color: 0xf59e0b, transparent: true, opacity: 0.9,
-      side: THREE.DoubleSide, depthWrite: false,
+      color: 0xf59e0b,
+      transparent: true,
+      opacity: 0.9,
+      side: THREE.DoubleSide,
+      depthWrite: false,
       blending: THREE.AdditiveBlending,
     });
     const ring = new THREE.Mesh(ringGeom, ringMat);
-    ring.position.copy(ref.mesh.position);
+    ring.position.copy(worldPos);
     scene.add(ring);
 
     const startT = performance.now();
@@ -367,7 +435,7 @@ export function createGalaxy(
     step();
   }
 
-  // Mouse handling
+  // Pointer interaction
   function onPointerMove(e: PointerEvent) {
     const rect = renderer.domElement.getBoundingClientRect();
     mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -393,22 +461,27 @@ export function createGalaxy(
   // Animation loop
   let raf = 0;
   function loop() {
-    // Resume autorotate after 3s of no interaction
-    if (!controls.autoRotate && performance.now() - lastInteraction > 3000) {
+    if (!controls.autoRotate && performance.now() - lastInteraction > 4000) {
       controls.autoRotate = true;
     }
 
-    // Hover detection (throttled by being part of frame)
+    // Rotate sun + corona
+    sunGroup.rotation.y += 0.002;
+
+    // Orbital motion
+    starRefs.forEach((s) => {
+      if (s.pivot.visible) s.pivot.rotation.y += s.angularSpeed;
+    });
+
+    // Hover detection
     raycaster.setFromCamera(mouse, camera);
-    const visibleMeshes = starRefs.filter((s) => s.mesh.visible).map((s) => s.mesh);
+    const visibleMeshes = starRefs.filter((s) => s.pivot.visible).map((s) => s.mesh);
     const hits = raycaster.intersectObjects(visibleMeshes, false);
     const hit = hits[0];
     if (hit) {
       const ref = starRefs.find((s) => s.mesh === hit.object);
       if (ref && ref !== hovered) {
-        if (hovered) {
-          hovered.label.element.style.opacity = "0";
-        }
+        if (hovered) hovered.label.element.style.opacity = "0";
         hovered = ref;
         ref.label.element.style.opacity = "1";
         renderer.domElement.style.cursor = "pointer";
@@ -435,10 +508,6 @@ export function createGalaxy(
     labelRenderer.render(scene, camera);
     raf = requestAnimationFrame(loop);
   }
-  function renderOnce() {
-    renderer.render(scene, camera);
-    labelRenderer.render(scene, camera);
-  }
   loop();
 
   return {
@@ -456,8 +525,14 @@ export function createGalaxy(
       renderer.dispose();
       bgGeom.dispose();
       bgMat.dispose();
-      container.removeChild(renderer.domElement);
-      labelContainer.removeChild(labelRenderer.domElement);
+      sunGeom.dispose();
+      sunMat.dispose();
+      coronaGeom.dispose();
+      coronaMat.dispose();
+      flareGeom.dispose();
+      flareMat.dispose();
+      if (renderer.domElement.parentNode === container) container.removeChild(renderer.domElement);
+      if (labelRenderer.domElement.parentNode === labelContainer) labelContainer.removeChild(labelRenderer.domElement);
     },
   };
 }
