@@ -412,6 +412,23 @@ function StudentDashboard() {
                 )}
               </Panel>
 
+              <Panel title="শিক্ষকের হস্তক্ষেপ">
+                {interventions.length === 0 ? (
+                  <EmptyState icon={Bell} title="এখনো কোনো হস্তক্ষেপ অ্যাসাইন করা হয়নি।" />
+                ) : (
+                  <ul className="space-y-3">
+                    {interventions.map((iv) => (
+                      <InterventionCard
+                        key={iv.id}
+                        iv={iv}
+                        onStart={startIntervention}
+                        onSubmit={submitIntervention}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </Panel>
+
               <Panel
                 title="অনুশীলন প্ল্যান"
                 action={
