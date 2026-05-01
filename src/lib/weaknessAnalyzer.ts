@@ -35,9 +35,11 @@ export type WeaknessAnalysis = {
   interventionType: InterventionType;
   prerequisites: string[];
   recentMistakes: string[]; // free-text excerpts from sessions
+  misconceptionExamples: string[]; // exact wrong statements from misconceptions table
   trend: "improving" | "declining" | "flat";
   trendDelta: number;       // last - first, in percent
   lastReviewedDays: number;
+  dimensions: { exposure: number; understanding: number; application: number; retention: number };
 };
 
 const REASON_LABEL_BN: Record<WeaknessReason, string> = {
@@ -89,22 +91,37 @@ function pickReason(args: {
   prereqWeak: boolean;
   recentSessions: SessionInput[];
   lastReviewedDays: number;
+  misconceptionCount: number;
 }): WeaknessReason {
-  const { node, prereqWeak, recentSessions, lastReviewedDays } = args;
+  const { node, prereqWeak, recentSessions, lastReviewedDays, misconceptionCount } = args;
+  const dims = node.dims;
+  const ev = node.evidence;
 
-  if (node.misconceptionCount >= 3) return "repeated_misconception";
+  // Repeated misconception: explicit logged misconceptions OR engine counter.
+  if (misconceptionCount >= 2 || node.misconceptionCount >= 3) return "repeated_misconception";
   if (prereqWeak) return "dependency_weakness";
 
-  // Quiz accuracy heuristic: derive from mastery + misconceptions vs interactions.
-  const quizish = node.interactionCount;
-  const accuracy = quizish ? Math.max(0, 1 - node.misconceptionCount / quizish) : 1;
-  if (quizish >= 3 && accuracy < 0.5) return "low_quiz_accuracy";
+  // Quiz / application channel is weak after enough attempts.
+  if (ev.quizAccuracy > 0 && ev.quizAccuracy < 0.5 && node.interactionCount >= 3) {
+    return "low_quiz_accuracy";
+  }
+  if (dims.application < 0.35 && dims.understanding > 0.4) {
+    return "low_quiz_accuracy";
+  }
 
-  if (node.score < 40 && node.interactionCount <= 1) return "newly_introduced";
-  if (lastReviewedDays >= 7 && node.score < 60) return "poor_retention";
+  // Newly introduced — exposure but almost no understanding evidence.
+  if (dims.exposure > 0 && dims.understanding < 0.2 && node.interactionCount <= 1) {
+    return "newly_introduced";
+  }
 
-  // Confidence is low but score is OK -> shaky explanation
-  if (node.confidence < 0.4) return "incomplete_explanation";
+  // Retention dimension is weak OR concept stale.
+  if (dims.retention < 0.3 && dims.understanding > 0.4) return "poor_retention";
+  if (lastReviewedDays >= 7 && dims.retention < 0.5) return "poor_retention";
+
+  // Understanding itself is shaky → incomplete explanation.
+  if (dims.understanding < 0.5 || ev.explanationQuality < 0.5) {
+    return "incomplete_explanation";
+  }
 
   if (recentSessions.length === 0) return "poor_retention";
   return "incomplete_explanation";
@@ -145,10 +162,21 @@ function recentMistakesFor(concept: string, sessions: SessionInput[]): string[] 
   return out;
 }
 
+export type MisconceptionRecord = {
+  user_id: string;
+  concept: string;
+  statement: string;
+  tag: string;
+  weakness_type: string;
+  resolved: boolean;
+  detected_at: string;
+};
+
 export function analyzeWeakness(
   conceptRow: ConceptInput,
   allConcepts: ConceptInput[],
   sessions: SessionInput[],
+  misconceptions: MisconceptionRecord[] = [],
 ): WeaknessAnalysis {
   const node = fromDb(conceptRow);
   const lastReviewedDays = Math.round(daysSince(node.lastReviewed));
@@ -166,14 +194,26 @@ export function analyzeWeakness(
     (s.topic || "").toLowerCase().includes(conceptRow.concept.toLowerCase()),
   );
 
-  const reason = pickReason({ node, prereqWeak, recentSessions: conceptSessions, lastReviewedDays });
+  const conceptMisconceptions = misconceptions.filter(
+    (m) => m.user_id === conceptRow.user_id && m.concept === conceptRow.concept && !m.resolved,
+  );
+  const misconceptionExamples = conceptMisconceptions.slice(0, 4).map((m) => m.statement);
+
+  const reason = pickReason({
+    node,
+    prereqWeak,
+    recentSessions: conceptSessions,
+    lastReviewedDays,
+    misconceptionCount: conceptMisconceptions.length,
+  });
   const interventionType = pickIntervention(reason);
 
-  // Severity: combine "how low is mastery" + "how many misconceptions" + "how stale".
-  const masteryGap = (1 - (conceptRow.mastery_level ?? 0)) * 60; // 0..60
-  const miscon = Math.min(20, node.misconceptionCount * 5);      // 0..20
-  const stale = lastReviewedDays >= 14 ? 20 : lastReviewedDays >= 7 ? 10 : 0;
-  const severityScore = Math.min(100, Math.round(masteryGap + miscon + stale));
+  // Severity: combine mastery gap + dimension-aware penalties + stale time + misconception count.
+  const masteryGap = (1 - (conceptRow.mastery_level ?? 0)) * 50;       // 0..50
+  const retentionGap = (1 - node.dims.retention) * 15;                  // 0..15
+  const miscon = Math.min(20, conceptMisconceptions.length * 7);        // 0..20
+  const stale = lastReviewedDays >= 14 ? 15 : lastReviewedDays >= 7 ? 8 : 0;
+  const severityScore = Math.min(100, Math.round(masteryGap + retentionGap + miscon + stale));
 
   const { trend, delta } = trendFrom(conceptSessions);
 
@@ -189,9 +229,11 @@ export function analyzeWeakness(
     interventionType,
     prerequisites: prereqs,
     recentMistakes: recentMistakesFor(conceptRow.concept, studentSessions),
+    misconceptionExamples,
     trend,
     trendDelta: delta,
     lastReviewedDays,
+    dimensions: node.dims,
   };
 }
 

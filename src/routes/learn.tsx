@@ -28,6 +28,9 @@ import {
   applyUpdate, fromDb, toDbPatch, type MasteryState, type MasteryNode,
 } from "@/lib/masteryEngine";
 
+// Full column list for round-tripping a concept_node row through the engine.
+const NODE_COLS = "concept, mastery_level, confidence, state, interaction_count, misconception_count, last_reviewed, exposure, understanding, application, retention, explanation_quality, challenge_score, quiz_accuracy, retention_score, hint_dependency, last_retention_check, retention_history";
+
 // Map the engine's progressive state → the legacy 3-band UI confidence used by MindMap/LeftPanel.
 const stateToConfidence = (s: MasteryState): ExtractedConcept["confidence"] =>
   s === "mastered" || s === "practiced" ? "strong"
@@ -152,7 +155,7 @@ function LearnPage() {
     if (!userId || !online) return;
     const { data } = await supabase
       .from("concept_nodes")
-      .select("concept, mastery_level, confidence, interaction_count, misconception_count, last_reviewed, state")
+      .select(NODE_COLS)
       .eq("user_id", userId)
       .eq("subject", t);
     if (!data) return;
@@ -199,7 +202,7 @@ function LearnPage() {
     const names = items.map((c) => c.name);
     const { data: existing } = await supabase
       .from("concept_nodes")
-      .select("concept, mastery_level, confidence, interaction_count, misconception_count, last_reviewed, state")
+      .select(NODE_COLS)
       .eq("user_id", userId)
       .eq("subject", topicVal)
       .in("concept", names);
@@ -265,7 +268,7 @@ function LearnPage() {
     // Topic-level bump first (always present as a concept row).
     const { data: existing } = await supabase
       .from("concept_nodes")
-      .select("concept, mastery_level, confidence, interaction_count, misconception_count, last_reviewed, state")
+      .select(NODE_COLS)
       .eq("user_id", userId)
       .eq("subject", topic);
     const byName = new Map<string, any>();
@@ -286,6 +289,38 @@ function LearnPage() {
       .upsert(upserts, { onConflict: "user_id,subject,concept" });
   };
 
+  // Record exact misconceptions surfaced during Socratic evaluation.
+  // For each concept the verdict marked as "gap", store the student's literal
+  // explanation as the misconception statement, plus a short canonical tag.
+  const recordMisconceptions = async (
+    topicVal: string,
+    verdicts: ExtractedConcept[],
+    studentExplanation: string,
+  ) => {
+    if (!userId || !online) return;
+    const gaps = verdicts.filter((v) => v.confidence === "gap");
+    if (!gaps.length) return;
+    const trimmed = studentExplanation.trim().slice(0, 600);
+    const rows = gaps.map((g) => {
+      // Tag = first ~6 words of the concept-related sentence in the explanation,
+      // falling back to the concept name. Used as a short canonical label.
+      const sentenceMatch = trimmed
+        .split(/[।.!?\n]+/)
+        .map((s) => s.trim())
+        .find((s) => s && s.toLowerCase().includes(g.name.toLowerCase()));
+      const tag = (sentenceMatch || g.name).split(/\s+/).slice(0, 6).join(" ");
+      return {
+        user_id: userId,
+        concept: g.name,
+        subject: topicVal,
+        statement: sentenceMatch || trimmed || g.name,
+        tag,
+        weakness_type: "conceptual",
+        resolved: false,
+      };
+    });
+    await supabase.from("misconceptions").insert(rows);
+  };
 
   const deleteConcept = async (name: string) => {
     // Optimistic local removal
@@ -384,6 +419,8 @@ function LearnPage() {
         const verdicts = j.concepts as ExtractedConcept[];
         mergeConcepts(verdicts, "verdict");
         persistConcepts(topicVal, verdicts, "explanation");
+        // Record exact misconceptions for any concept the AI judged a "gap".
+        recordMisconceptions(topicVal, verdicts, studentExplanation);
       }
     } catch { /* silent */ }
     finally { setExtracting(false); }

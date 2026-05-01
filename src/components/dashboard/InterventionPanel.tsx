@@ -11,6 +11,7 @@ import {
   type ConceptInput,
   type SessionInput,
   type WeaknessAnalysis,
+  type MisconceptionRecord,
 } from "@/lib/weaknessAnalyzer";
 
 type Intervention = {
@@ -44,6 +45,7 @@ type Props = {
 
 export function InterventionPanel({ students, nodes, sessions, selectedStudentId, teacherId }: Props) {
   const [interventions, setInterventions] = useState<Intervention[]>([]);
+  const [misconceptions, setMisconceptions] = useState<MisconceptionRecord[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [filterStudent, setFilterStudent] = useState<string>(selectedStudentId || "all");
@@ -52,16 +54,21 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
     setFilterStudent(selectedStudentId || "all");
   }, [selectedStudentId]);
 
-  // Load interventions
+  // Load interventions + misconceptions
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const { data } = await supabase
-        .from("interventions")
-        .select("*")
-        .order("assigned_at", { ascending: false });
+      const [{ data: ivs }, { data: ms }] = await Promise.all([
+        supabase.from("interventions").select("*").order("assigned_at", { ascending: false }),
+        supabase
+          .from("misconceptions")
+          .select("user_id, concept, statement, tag, weakness_type, resolved, detected_at")
+          .order("detected_at", { ascending: false })
+          .limit(500),
+      ]);
       if (!mounted) return;
-      setInterventions((data || []) as Intervention[]);
+      setInterventions((ivs || []) as Intervention[]);
+      setMisconceptions((ms || []) as MisconceptionRecord[]);
     })();
     return () => { mounted = false; };
   }, []);
@@ -79,12 +86,12 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
           studentId: stu.id,
           studentName: stu.full_name || "শিক্ষার্থী",
           conceptId: w.id,
-          analysis: analyzeWeakness(w, nodes, sessions),
+          analysis: analyzeWeakness(w, nodes, sessions, misconceptions),
         });
       }
     }
     return out.sort((a, b) => b.analysis.severityScore - a.analysis.severityScore).slice(0, 12);
-  }, [students, nodes, sessions, filterStudent]);
+  }, [students, nodes, sessions, filterStudent, misconceptions]);
 
   async function assignIntervention(item: typeof analyses[number]) {
     setBusyId(item.conceptId);
@@ -245,6 +252,26 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
                       </Block>
                     </div>
 
+                    {a.misconceptionExamples.length > 0 && (
+                      <div className="mt-3 rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                        <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-red-300">
+                          <AlertTriangle className="h-3.5 w-3.5" /> সঠিক ভুল ধারণা
+                        </p>
+                        <ul className="space-y-1">
+                          {a.misconceptionExamples.map((m, i) => (
+                            <li key={i} className="text-xs italic text-white/80">"{m}"</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <div className="mt-3 grid gap-2 sm:grid-cols-4">
+                      <DimBar label="পরিচিতি" value={a.dimensions.exposure} color="#60A5FA" />
+                      <DimBar label="বোধগম্যতা" value={a.dimensions.understanding} color="#22D3EE" />
+                      <DimBar label="প্রয়োগ" value={a.dimensions.application} color="#A78BFA" />
+                      <DimBar label="ধারণ" value={a.dimensions.retention} color="#F59E0B" />
+                    </div>
+
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       {existing ? (
                         <>
@@ -366,5 +393,20 @@ function TrendBadge({ trend, delta }: { trend: "improving" | "declining" | "flat
       <Icon className="h-3 w-3" />
       {delta > 0 ? "+" : ""}{delta}%
     </span>
+  );
+}
+
+function DimBar({ label, value, color }: { label: string; value: number; color: string }) {
+  const pct = Math.round(Math.max(0, Math.min(1, value)) * 100);
+  return (
+    <div className="rounded-md border border-white/5 bg-white/[0.02] p-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] uppercase tracking-wider text-white/50">{label}</span>
+        <span className="text-[11px] font-semibold" style={{ color }}>{pct}%</span>
+      </div>
+      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/5">
+        <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+      </div>
+    </div>
   );
 }
