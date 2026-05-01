@@ -323,6 +323,41 @@ export function createGalaxy(
       });
     });
 
+    // Build prerequisite dependency links between planets.
+    // We resolve prereqs by concept name. Fragile path = prereq star whose
+    // emotional/state is fragile or cold-blue (weak foundation).
+    linkRefs.length = 0;
+    const byConcept = new Map<string, StarRef>();
+    starRefs.forEach((s) => byConcept.set(s.star.concept, s));
+    starRefs.forEach((dep) => {
+      const prereqs = dep.star.prerequisites ?? [];
+      const fragileSet = new Set(dep.star.fragilePath ?? []);
+      prereqs.forEach((prName) => {
+        const src = byConcept.get(prName);
+        if (!src || src === dep) return;
+        const isFragile =
+          fragileSet.has(prName) ||
+          src.star.emotional === "fragile" ||
+          src.star.emotional === "cold-blue" ||
+          src.star.mastery < 0.45;
+        const color = isFragile ? 0xef4444 : 0xfbbf24;
+        const geom = new THREE.BufferGeometry();
+        // Two endpoints, updated each frame (planets orbit).
+        geom.setAttribute("position", new THREE.BufferAttribute(new Float32Array(6), 3));
+        const mat = new THREE.LineBasicMaterial({
+          color,
+          transparent: true,
+          opacity: isFragile ? 0.85 : 0.35,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        });
+        const line = new THREE.Line(geom, mat);
+        line.frustumCulled = false;
+        linksGroup.add(line);
+        linkRefs.push({ line, geom, from: src, to: dep, fragile: isFragile });
+      });
+    });
+
     applyFilter();
   }
 
@@ -331,6 +366,10 @@ export function createGalaxy(
       const visible = !currentFilter || s.star.subject === currentFilter;
       s.pivot.visible = visible;
       s.label.element.style.display = visible ? "" : "none";
+    });
+    // Hide links whose endpoints are filtered out.
+    linkRefs.forEach((l) => {
+      l.line.visible = l.from.pivot.visible && l.to.pivot.visible;
     });
     // Also hide orbit rings when filtering
     orbitsGroup.children.forEach((ring, idx) => {
