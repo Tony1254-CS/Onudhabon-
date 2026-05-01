@@ -29,7 +29,7 @@ import {
 } from "@/lib/masteryEngine";
 
 // Full column list for round-tripping a concept_node row through the engine.
-const NODE_COLS = "concept, mastery_level, confidence, state, interaction_count, misconception_count, last_reviewed, exposure, understanding, application, retention, explanation_quality, challenge_score, quiz_accuracy, retention_score, hint_dependency, last_retention_check, retention_history";
+const NODE_COLS = "concept, mastery_level, confidence, state, interaction_count, misconception_count, last_reviewed, exposure, understanding, application, retention, explanation_quality, challenge_score, quiz_accuracy, retention_score, hint_dependency, last_retention_check, retention_history, prerequisites";
 
 // Map the engine's progressive state → the legacy 3-band UI confidence used by MindMap/LeftPanel.
 const stateToConfidence = (s: MasteryState): ExtractedConcept["confidence"] =>
