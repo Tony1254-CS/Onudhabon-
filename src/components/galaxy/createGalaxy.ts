@@ -191,6 +191,14 @@ export function createGalaxy(
     radius: number;
   };
   const starRefs: StarRef[] = [];
+  type LinkRef = {
+    line: THREE.Line;
+    geom: THREE.BufferGeometry;
+    from: StarRef;
+    to: StarRef;
+    fragile: boolean;
+  };
+  const linkRefs: LinkRef[] = [];
   let hovered: StarRef | null = null;
   let currentFilter: string | null = null;
 
