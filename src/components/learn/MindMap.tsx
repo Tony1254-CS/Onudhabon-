@@ -8,7 +8,7 @@ import "reactflow/dist/style.css";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Sparkles, Link2, Target } from "lucide-react";
 
-export type ExtractedConcept = { name: string; confidence: "strong" | "weak" | "gap"; reason?: string; related?: string[] };
+export type ExtractedConcept = { name: string; confidence: "strong" | "weak" | "gap"; reason?: string; related?: string[]; prerequisites?: string[]; fragilePath?: string[] };
 
 const colorFor = (c: ExtractedConcept["confidence"]) =>
   c === "strong" ? "#F59E0B" : c === "weak" ? "#60A5FA" : "#EF4444";
@@ -125,8 +125,27 @@ function MindMapInner({
             source: `n-${i}-${c.name}`,
             target: `n-${target}-${concepts[target].name}`,
             animated: true,
-            style: { stroke: "#60A5FA", strokeWidth: 1, opacity: 0.5 },
+            style: { stroke: "#60A5FA", strokeWidth: 1, opacity: 0.4 },
             markerEnd: { type: MarkerType.ArrowClosed, color: "#60A5FA" },
+          });
+        }
+      });
+      // Prerequisite edges (prereq → dependent), colored red when prereq is fragile
+      (c.prerequisites ?? []).forEach((pr) => {
+        const src = concepts.findIndex((x) => x.name === pr);
+        if (src >= 0 && src !== i) {
+          const isFragile = (c.fragilePath ?? []).includes(pr);
+          const stroke = isFragile ? "#EF4444" : "#F59E0B";
+          edges.push({
+            id: `pre-${src}-${i}`,
+            source: `n-${src}-${concepts[src].name}`,
+            target: `n-${i}-${c.name}`,
+            animated: isFragile,
+            style: { stroke, strokeWidth: isFragile ? 2 : 1.5, opacity: isFragile ? 0.9 : 0.7, strokeDasharray: isFragile ? "6 3" : undefined },
+            markerEnd: { type: MarkerType.ArrowClosed, color: stroke },
+            label: isFragile ? "ভঙ্গুর" : undefined,
+            labelStyle: { fill: stroke, fontSize: 9, fontWeight: 600 },
+            labelBgStyle: { fill: "rgba(0,0,0,0.6)" },
           });
         }
       });

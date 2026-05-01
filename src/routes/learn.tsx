@@ -25,11 +25,12 @@ import { Volume2, VolumeX, Brain, BookOpen, Activity, Trophy, ExternalLink, Chev
 import { cacheSession, idbPut, idbGet } from "@/lib/idb";
 import { toast } from "sonner";
 import {
-  applyUpdate, fromDb, toDbPatch, type MasteryState, type MasteryNode,
+  applyUpdate, fromDb, toDbPatch, propagateGraph,
+  type MasteryState, type MasteryNode,
 } from "@/lib/masteryEngine";
 
 // Full column list for round-tripping a concept_node row through the engine.
-const NODE_COLS = "concept, mastery_level, confidence, state, interaction_count, misconception_count, last_reviewed, exposure, understanding, application, retention, explanation_quality, challenge_score, quiz_accuracy, retention_score, hint_dependency, last_retention_check, retention_history";
+const NODE_COLS = "concept, mastery_level, confidence, state, interaction_count, misconception_count, last_reviewed, exposure, understanding, application, retention, explanation_quality, challenge_score, quiz_accuracy, retention_score, hint_dependency, last_retention_check, retention_history, prerequisites";
 
 // Map the engine's progressive state → the legacy 3-band UI confidence used by MindMap/LeftPanel.
 const stateToConfidence = (s: MasteryState): ExtractedConcept["confidence"] =>
@@ -143,6 +144,8 @@ function LearnPage() {
       mastery,
       emotional: stateToEmotional(state) as ConceptNode["emotional"],
       state,
+      prerequisites: c.prerequisites,
+      fragilePath: c.fragilePath,
     };
   }), [concepts]);
 
@@ -161,8 +164,8 @@ function LearnPage() {
     if (!data) return;
     // Decay sweep: apply time-based mastery decay for any row not reviewed in 7+ days.
     const decayed: any[] = [];
-    const restored: ExtractedConcept[] = data.map((r) => {
-      let node = fromDb(r as any);
+    const nodesForGraph = data.map((r: any) => {
+      let node = fromDb(r);
       const days = node.lastReviewed
         ? Math.max(0, (Date.now() - new Date(node.lastReviewed).getTime()) / 86400000)
         : 0;
@@ -170,8 +173,25 @@ function LearnPage() {
         node = applyUpdate(node, { type: "decay", daysSince: days });
         decayed.push({ user_id: userId, concept: r.concept, subject: t, ...toDbPatch(node) });
       }
-      return { name: r.concept, confidence: stateToConfidence(node.state) };
+      return {
+        key: r.concept as string,
+        score: node.score,
+        state: node.state,
+        confidence: node.confidence,
+        prerequisites: (r.prerequisites as string[] | null) ?? [],
+      };
     });
+    // Run dependency-aware propagation across the whole topic graph.
+    const propagated = propagateGraph(nodesForGraph);
+    const restored: ExtractedConcept[] = propagated.map((p) => ({
+      name: p.key,
+      confidence: stateToConfidence(p.effectiveState),
+      prerequisites: p.prerequisites,
+      fragilePath: p.fragilePath,
+      reason: p.fragilePath.length
+        ? `ভিত্তি দুর্বল: ${p.fragilePath.slice(0, 2).join(", ")}`
+        : undefined,
+    }));
     if (decayed.length) {
       // Fire-and-forget: persist decayed scores so the next load reflects current state.
       supabase.from("concept_nodes").upsert(decayed, { onConflict: "user_id,subject,concept" });
@@ -221,11 +241,17 @@ function LearnPage() {
       if (next.state === "mastered" && prevNode.state !== "mastered") {
         newlyMasteredNames.push(c.name);
       }
+      // Merge prerequisites from AI extractor with whatever is already on the row.
+      const prevPrereqs: string[] = (prevRow?.prerequisites as string[] | null) ?? [];
+      const newPrereqs: string[] = c.prerequisites ?? [];
+      const mergedPrereqs = Array.from(new Set([...prevPrereqs, ...newPrereqs]))
+        .filter((p) => p && p !== c.name);
       return {
         user_id: userId,
         concept: c.name,
         subject: topicVal,
         ...toDbPatch(next),
+        prerequisites: mergedPrereqs,
       };
     });
 
@@ -248,16 +274,9 @@ function LearnPage() {
       .from("concept_nodes")
       .upsert(upserts, { onConflict: "user_id,subject,concept" });
 
-    // Reflect server-side state back into the live UI confidence band.
-    setConcepts((prev) => {
-      const map = new Map(prev.map((p) => [p.name, p] as const));
-      upserts.forEach((u) => {
-        const cur = map.get(u.concept);
-        const conf = stateToConfidence(u.state as MasteryState);
-        map.set(u.concept, cur ? { ...cur, confidence: conf } : { name: u.concept, confidence: conf });
-      });
-      return Array.from(map.values());
-    });
+    // Re-load with dependency-aware propagation so the UI reflects fragile
+    // chains caused by weak prerequisites.
+    await loadConceptsForTopic(topicVal);
   };
 
   // Apply quiz outcomes (one row per question) to the concept the question is about.

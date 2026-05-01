@@ -48,18 +48,50 @@ function GalaxyPage() {
       if (!session) { navigate({ to: "/login" }); return; }
       const { data } = await supabase
         .from("concept_nodes")
-        .select("id, concept, subject, mastery_level, emotional_tag, last_reviewed, state")
+        .select("id, concept, subject, mastery_level, emotional_tag, last_reviewed, state, prerequisites")
         .order("created_at", { ascending: false });
       if (!m) return;
+      const rows = (data ?? []) as Array<{
+        id: string;
+        concept: string;
+        subject: string | null;
+        mastery_level: number | null;
+        emotional_tag: string | null;
+        last_reviewed: string | null;
+        state?: string | null;
+        prerequisites?: string[] | null;
+      }>;
+      // Index by concept name to compute the fragile dependency path.
+      const byConcept = new Map<string, typeof rows[number]>();
+      rows.forEach((r) => byConcept.set(r.concept, r));
       setStars(
-        (data ?? []).map((r) => ({
-          id: r.id,
-          concept: r.concept,
-          subject: r.subject,
-          mastery: r.mastery_level ?? 0,
-          emotional: (r as any).state === "fragile" ? "fragile" : (r.emotional_tag as any),
-          lastReviewed: r.last_reviewed,
-        })),
+        rows.map((r) => {
+          const prereqs = (r.prerequisites ?? []).filter(Boolean);
+          const fragilePath = prereqs.filter((pn) => {
+            const p = byConcept.get(pn);
+            if (!p) return false;
+            return (
+              p.state === "fragile" ||
+              p.state === "unknown" ||
+              (p.mastery_level ?? 0) < 0.45
+            );
+          });
+          return {
+            id: r.id,
+            concept: r.concept,
+            subject: r.subject,
+            mastery: r.mastery_level ?? 0,
+            emotional:
+              r.state === "fragile"
+                ? "fragile"
+                : fragilePath.length > 0 && (r.mastery_level ?? 0) < 0.75
+                ? "cold-blue"
+                : (r.emotional_tag as any),
+            lastReviewed: r.last_reviewed,
+            prerequisites: prereqs,
+            fragilePath,
+          };
+        }),
       );
       setLoading(false);
     });
@@ -307,6 +339,14 @@ function GalaxyPage() {
         <span className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-[#FB923C]" style={{ boxShadow: "0 0 8px #FB923Caa" }} />
           পর্যালোচনা দরকার
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-4 h-px bg-[#FBBF24]" />
+          নির্ভরতা
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-4 h-px bg-[#EF4444]" style={{ boxShadow: "0 0 6px #EF4444aa" }} />
+          ভঙ্গুর ভিত্তি
         </span>
         <span className="hidden sm:inline text-[var(--text-secondary)]">
           মোট: {counts.total} | আয়ত্ত: {counts.mastered} | ভঙ্গুর: {counts.fragile}

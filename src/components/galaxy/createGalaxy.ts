@@ -9,6 +9,8 @@ export type GalaxyStar = {
   mastery: number;
   emotional: "gold" | "cold-blue" | "fragile" | string | null;
   lastReviewed: string | null;
+  prerequisites?: string[];   // prereq concept names (resolved against other stars)
+  fragilePath?: string[];     // subset of prereqs whose star is fragile/weak
 };
 
 // Color mapping: gold for mastered, cold-blue for fragile, others muted
@@ -151,8 +153,10 @@ export function createGalaxy(
   // ============ Orbit/planet groups ============
   const orbitsGroup = new THREE.Group();
   const planetsGroup = new THREE.Group();
+  const linksGroup = new THREE.Group(); // prerequisite dependency lines
   scene.add(orbitsGroup);
   scene.add(planetsGroup);
+  scene.add(linksGroup);
 
   // Controls
   const controls = new OrbitControls(camera, renderer.domElement);
@@ -187,12 +191,26 @@ export function createGalaxy(
     radius: number;
   };
   const starRefs: StarRef[] = [];
+  type LinkRef = {
+    line: THREE.Line;
+    geom: THREE.BufferGeometry;
+    from: StarRef;
+    to: StarRef;
+    fragile: boolean;
+  };
+  const linkRefs: LinkRef[] = [];
   let hovered: StarRef | null = null;
   let currentFilter: string | null = null;
 
   function clearStars() {
     while (planetsGroup.children.length) planetsGroup.remove(planetsGroup.children[0]);
     while (orbitsGroup.children.length) orbitsGroup.remove(orbitsGroup.children[0]);
+    while (linksGroup.children.length) {
+      const obj = linksGroup.children[0] as THREE.Line;
+      linksGroup.remove(obj);
+      (obj.geometry as THREE.BufferGeometry)?.dispose?.();
+      ((obj.material as THREE.Material) as any)?.dispose?.();
+    }
     starRefs.forEach((s) => {
       s.label.element.remove();
       s.label.removeFromParent();
@@ -305,6 +323,41 @@ export function createGalaxy(
       });
     });
 
+    // Build prerequisite dependency links between planets.
+    // We resolve prereqs by concept name. Fragile path = prereq star whose
+    // emotional/state is fragile or cold-blue (weak foundation).
+    linkRefs.length = 0;
+    const byConcept = new Map<string, StarRef>();
+    starRefs.forEach((s) => byConcept.set(s.star.concept, s));
+    starRefs.forEach((dep) => {
+      const prereqs = dep.star.prerequisites ?? [];
+      const fragileSet = new Set(dep.star.fragilePath ?? []);
+      prereqs.forEach((prName) => {
+        const src = byConcept.get(prName);
+        if (!src || src === dep) return;
+        const isFragile =
+          fragileSet.has(prName) ||
+          src.star.emotional === "fragile" ||
+          src.star.emotional === "cold-blue" ||
+          src.star.mastery < 0.45;
+        const color = isFragile ? 0xef4444 : 0xfbbf24;
+        const geom = new THREE.BufferGeometry();
+        // Two endpoints, updated each frame (planets orbit).
+        geom.setAttribute("position", new THREE.BufferAttribute(new Float32Array(6), 3));
+        const mat = new THREE.LineBasicMaterial({
+          color,
+          transparent: true,
+          opacity: isFragile ? 0.85 : 0.35,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        });
+        const line = new THREE.Line(geom, mat);
+        line.frustumCulled = false;
+        linksGroup.add(line);
+        linkRefs.push({ line, geom, from: src, to: dep, fragile: isFragile });
+      });
+    });
+
     applyFilter();
   }
 
@@ -313,6 +366,10 @@ export function createGalaxy(
       const visible = !currentFilter || s.star.subject === currentFilter;
       s.pivot.visible = visible;
       s.label.element.style.display = visible ? "" : "none";
+    });
+    // Hide links whose endpoints are filtered out.
+    linkRefs.forEach((l) => {
+      l.line.visible = l.from.pivot.visible && l.to.pivot.visible;
     });
     // Also hide orbit rings when filtering
     orbitsGroup.children.forEach((ring, idx) => {
@@ -471,6 +528,25 @@ export function createGalaxy(
     // Orbital motion
     starRefs.forEach((s) => {
       if (s.pivot.visible) s.pivot.rotation.y += s.angularSpeed;
+    });
+
+    // Update prerequisite link endpoints to track moving planets.
+    const tmpA = new THREE.Vector3();
+    const tmpB = new THREE.Vector3();
+    const t = performance.now() * 0.003;
+    linkRefs.forEach((l) => {
+      if (!l.line.visible) return;
+      l.from.mesh.getWorldPosition(tmpA);
+      l.to.mesh.getWorldPosition(tmpB);
+      const arr = l.geom.attributes.position.array as Float32Array;
+      arr[0] = tmpA.x; arr[1] = tmpA.y; arr[2] = tmpA.z;
+      arr[3] = tmpB.x; arr[4] = tmpB.y; arr[5] = tmpB.z;
+      l.geom.attributes.position.needsUpdate = true;
+      // Pulse fragile links to draw the eye to at-risk learning chains.
+      if (l.fragile) {
+        const mat = l.line.material as THREE.LineBasicMaterial;
+        mat.opacity = 0.55 + 0.35 * (0.5 + 0.5 * Math.sin(t));
+      }
     });
 
     // Hover detection

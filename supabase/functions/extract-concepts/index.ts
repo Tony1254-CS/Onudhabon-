@@ -34,6 +34,11 @@ async function callJSON(messages: any[]): Promise<any | null> {
                         confidence: { type: "string", enum: ["strong", "weak", "gap"] },
                         reason: { type: "string", description: "One short Bangla sentence (max 80 chars) explaining WHY this confidence — what the student showed or missed." },
                         related: { type: "array", items: { type: "string" } },
+                        prerequisites: {
+                          type: "array",
+                          items: { type: "string" },
+                          description: "Bangla names of foundational concepts this one depends on (e.g. ওহমের সূত্র depends on বিভব, প্রবাহ, রোধ). Empty if none.",
+                        },
                       },
                       required: ["name", "confidence"],
                     },
@@ -60,7 +65,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
     const { topic, transcript } = await req.json();
-    const sys = `You analyze a Bangladeshi student's spoken/typed explanation of "${topic}". Identify key concepts they mentioned. Mark each as: "strong" (confidently explained), "weak" (mentioned but unclear), or "gap" (expected but missing). Return concept names in Bangla. Maximum 8 concepts.`;
+    const sys = `You analyze a Bangladeshi student's spoken/typed explanation of "${topic}". Identify key concepts they mentioned. Mark each as: "strong" (confidently explained), "weak" (mentioned but unclear), or "gap" (expected but missing). For each concept, list its prerequisite concepts (foundational ideas it depends on) using Bangla names. Return concept names in Bangla. Maximum 8 concepts.`;
     const result = await callJSON([
       { role: "system", content: sys },
       { role: "user", content: `Topic: ${topic}\n\nStudent explanation:\n${transcript}` },
