@@ -19,7 +19,7 @@ function scrambleChoices(quiz: { question: string; answer: string }[]): Q[] {
   });
 }
 
-export function QuizPanel({ topic, online }: { topic: string; online: boolean }) {
+export function QuizPanel({ topic, online, onSubmit }: { topic: string; online: boolean; onSubmit?: (result: { score: number; total: number }) => void }) {
   const { data, loading, generate, fromCache } = useTopicNotes(topic);
   const questions = useMemo<Q[]>(() => (data?.quiz ? scrambleChoices(data.quiz) : []), [data]);
   const [picks, setPicks] = useState<Record<number, number>>({});
@@ -46,6 +46,7 @@ export function QuizPanel({ topic, online }: { topic: string; online: boolean })
     setSubmitted(true);
     if (total > 0) {
       saveQuizResult({ topic, score, total, takenAt: Date.now() });
+      onSubmit?.({ score, total });
     }
   };
 
