@@ -93,7 +93,7 @@ export function LeftPanel({
                   <MasteryRing value={n.mastery} color={color} />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-bangla text-[var(--text-primary)] truncate">{n.name}</div>
-                    <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                       <span
                         className="inline-block px-1.5 py-px rounded-full text-[9px] font-bangla"
                         style={{ background: `${color}22`, color, border: `1px solid ${color}55` }}
@@ -101,6 +101,23 @@ export function LeftPanel({
                         {label}
                       </span>
                       <span className="text-[10px] tabular-nums text-white/40">{Math.round(n.mastery * 100)}</span>
+                      {(n.prerequisites?.length ?? 0) > 0 && (
+                        <span
+                          className="text-[9px] font-bangla rounded-full px-1.5 py-px border"
+                          style={{
+                            color: (n.fragilePath?.length ?? 0) > 0 ? "#EF4444" : "#94a3b8",
+                            borderColor: (n.fragilePath?.length ?? 0) > 0 ? "#EF444455" : "#334155",
+                            background: (n.fragilePath?.length ?? 0) > 0 ? "#EF44441a" : "transparent",
+                          }}
+                          title={`প্রয়োজনীয়: ${n.prerequisites!.join(", ")}${
+                            (n.fragilePath?.length ?? 0) > 0 ? `\nভঙ্গুর: ${n.fragilePath!.join(", ")}` : ""
+                          }`}
+                        >
+                          {(n.fragilePath?.length ?? 0) > 0
+                            ? `⚠ ভিত্তি দুর্বল (${n.fragilePath!.length})`
+                            : `${n.prerequisites!.length} ভিত্তি`}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </motion.li>
