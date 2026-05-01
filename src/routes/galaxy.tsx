@@ -340,6 +340,14 @@ function GalaxyPage() {
           <span className="w-2 h-2 rounded-full bg-[#FB923C]" style={{ boxShadow: "0 0 8px #FB923Caa" }} />
           পর্যালোচনা দরকার
         </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-4 h-px bg-[#FBBF24]" />
+          নির্ভরতা
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-4 h-px bg-[#EF4444]" style={{ boxShadow: "0 0 6px #EF4444aa" }} />
+          ভঙ্গুর ভিত্তি
+        </span>
         <span className="hidden sm:inline text-[var(--text-secondary)]">
           মোট: {counts.total} | আয়ত্ত: {counts.mastered} | ভঙ্গুর: {counts.fragile}
         </span>
