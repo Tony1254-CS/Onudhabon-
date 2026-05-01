@@ -289,8 +289,38 @@ function LearnPage() {
       .upsert(upserts, { onConflict: "user_id,subject,concept" });
   };
 
-
-  const deleteConcept = async (name: string) => {
+  // Record exact misconceptions surfaced during Socratic evaluation.
+  // For each concept the verdict marked as "gap", store the student's literal
+  // explanation as the misconception statement, plus a short canonical tag.
+  const recordMisconceptions = async (
+    topicVal: string,
+    verdicts: ExtractedConcept[],
+    studentExplanation: string,
+  ) => {
+    if (!userId || !online) return;
+    const gaps = verdicts.filter((v) => v.confidence === "gap");
+    if (!gaps.length) return;
+    const trimmed = studentExplanation.trim().slice(0, 600);
+    const rows = gaps.map((g) => {
+      // Tag = first ~6 words of the concept-related sentence in the explanation,
+      // falling back to the concept name. Used as a short canonical label.
+      const sentenceMatch = trimmed
+        .split(/[।.!?\n]+/)
+        .map((s) => s.trim())
+        .find((s) => s && s.toLowerCase().includes(g.name.toLowerCase()));
+      const tag = (sentenceMatch || g.name).split(/\s+/).slice(0, 6).join(" ");
+      return {
+        user_id: userId,
+        concept: g.name,
+        subject: topicVal,
+        statement: sentenceMatch || trimmed || g.name,
+        tag,
+        weakness_type: "conceptual",
+        resolved: false,
+      };
+    });
+    await supabase.from("misconceptions").insert(rows);
+  };
     // Optimistic local removal
     setConcepts((prev) => prev.filter((c) => c.name !== name));
     if (!userId || !online || !topic) return;
