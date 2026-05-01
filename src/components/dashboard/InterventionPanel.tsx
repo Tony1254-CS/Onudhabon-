@@ -11,6 +11,7 @@ import {
   type ConceptInput,
   type SessionInput,
   type WeaknessAnalysis,
+  type MisconceptionRecord,
 } from "@/lib/weaknessAnalyzer";
 
 type Intervention = {
