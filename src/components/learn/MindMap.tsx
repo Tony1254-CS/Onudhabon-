@@ -8,7 +8,7 @@ import "reactflow/dist/style.css";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Sparkles, Link2, Target } from "lucide-react";
 
-export type ExtractedConcept = { name: string; confidence: "strong" | "weak" | "gap"; reason?: string; related?: string[] };
+export type ExtractedConcept = { name: string; confidence: "strong" | "weak" | "gap"; reason?: string; related?: string[]; prerequisites?: string[]; fragilePath?: string[] };
 
 const colorFor = (c: ExtractedConcept["confidence"]) =>
   c === "strong" ? "#F59E0B" : c === "weak" ? "#60A5FA" : "#EF4444";
