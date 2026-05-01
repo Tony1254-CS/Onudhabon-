@@ -195,6 +195,72 @@ export type Database = {
         }
         Relationships: []
       }
+      interventions: {
+        Row: {
+          assigned_at: string
+          completed_at: string | null
+          concept: string
+          created_at: string
+          followup_at: string | null
+          id: string
+          intervention_type: string
+          mastery_after: number | null
+          mastery_before: number | null
+          notes: string | null
+          retention_delta: number | null
+          severity: string
+          status: string
+          student_id: string
+          subject: string | null
+          suggested_action: string
+          teacher_id: string
+          updated_at: string
+          weakness_reason: string
+        }
+        Insert: {
+          assigned_at?: string
+          completed_at?: string | null
+          concept: string
+          created_at?: string
+          followup_at?: string | null
+          id?: string
+          intervention_type: string
+          mastery_after?: number | null
+          mastery_before?: number | null
+          notes?: string | null
+          retention_delta?: number | null
+          severity?: string
+          status?: string
+          student_id: string
+          subject?: string | null
+          suggested_action: string
+          teacher_id: string
+          updated_at?: string
+          weakness_reason: string
+        }
+        Update: {
+          assigned_at?: string
+          completed_at?: string | null
+          concept?: string
+          created_at?: string
+          followup_at?: string | null
+          id?: string
+          intervention_type?: string
+          mastery_after?: number | null
+          mastery_before?: number | null
+          notes?: string | null
+          retention_delta?: number | null
+          severity?: string
+          status?: string
+          student_id?: string
+          subject?: string | null
+          suggested_action?: string
+          teacher_id?: string
+          updated_at?: string
+          weakness_reason?: string
+        }
+        Relationships: []
+      }
       learning_goals: {
         Row: {
           created_at: string
