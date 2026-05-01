@@ -78,12 +78,13 @@ function StudentDashboard() {
     let mounted = true;
     (async () => {
       setLoading(true);
-      const [{ data: cn }, { data: ss }, { data: gs }, { data: ns }, { data: pp }] = await Promise.all([
+      const [{ data: cn }, { data: ss }, { data: gs }, { data: ns }, { data: pp }, { data: ivs }] = await Promise.all([
         supabase.from("concept_nodes").select("*").eq("user_id", userId),
         supabase.from("sessions").select("id, topic, subject, mastery_score, cognitive_state, created_at, messages").eq("user_id", userId).order("created_at", { ascending: false }).limit(50),
         supabase.from("learning_goals").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
         supabase.from("notifications").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
         supabase.from("practice_plans").select("*").eq("user_id", userId).eq("status", "active").order("created_at", { ascending: false }).limit(3),
+        supabase.from("interventions").select("id, concept, subject, severity, intervention_type, suggested_action, status, student_response, submitted_at, assigned_at").eq("student_id", userId).order("assigned_at", { ascending: false }).limit(20),
       ]);
       if (!mounted) return;
       setConcepts((cn || []) as Concept[]);
@@ -91,6 +92,7 @@ function StudentDashboard() {
       setGoals((gs || []) as Goal[]);
       setNotifications((ns || []) as Notification[]);
       setPlans(((pp || []) as unknown) as Plan[]);
+      setInterventions((ivs || []) as Intervention[]);
       setLoading(false);
     })();
     return () => { mounted = false; };
