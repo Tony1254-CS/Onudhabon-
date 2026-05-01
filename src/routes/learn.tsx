@@ -145,10 +145,23 @@ function LearnPage() {
       .eq("user_id", userId)
       .eq("subject", t);
     if (!data) return;
+    // Decay sweep: apply time-based mastery decay for any row not reviewed in 7+ days.
+    const decayed: any[] = [];
     const restored: ExtractedConcept[] = data.map((r) => {
-      const node = fromDb(r as any);
+      let node = fromDb(r as any);
+      const days = node.lastReviewed
+        ? Math.max(0, (Date.now() - new Date(node.lastReviewed).getTime()) / 86400000)
+        : 0;
+      if (days >= 7 && node.score > 0) {
+        node = applyUpdate(node, { type: "decay", daysSince: days });
+        decayed.push({ user_id: userId, concept: r.concept, subject: t, ...toDbPatch(node) });
+      }
       return { name: r.concept, confidence: stateToConfidence(node.state) };
     });
+    if (decayed.length) {
+      // Fire-and-forget: persist decayed scores so the next load reflects current state.
+      supabase.from("concept_nodes").upsert(decayed, { onConflict: "user_id,subject,concept" });
+    }
     if (restored.length) {
       setConcepts(restored);
       // Refresh local cache for offline use
