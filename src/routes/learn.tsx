@@ -25,7 +25,7 @@ import { Volume2, VolumeX, Brain, BookOpen, Activity, Trophy, ExternalLink, Chev
 import { cacheSession, idbPut, idbGet } from "@/lib/idb";
 import { toast } from "sonner";
 import {
-  applyUpdate, fromDb, toDbPatch, deriveState, type MasteryState, type MasteryNode,
+  applyUpdate, fromDb, toDbPatch, type MasteryState, type MasteryNode,
 } from "@/lib/masteryEngine";
 
 // Map the engine's progressive state → the legacy 3-band UI confidence used by MindMap/LeftPanel.
