@@ -45,6 +45,7 @@ type Props = {
 
 export function InterventionPanel({ students, nodes, sessions, selectedStudentId, teacherId }: Props) {
   const [interventions, setInterventions] = useState<Intervention[]>([]);
+  const [misconceptions, setMisconceptions] = useState<MisconceptionRecord[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [filterStudent, setFilterStudent] = useState<string>(selectedStudentId || "all");
@@ -53,16 +54,21 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
     setFilterStudent(selectedStudentId || "all");
   }, [selectedStudentId]);
 
-  // Load interventions
+  // Load interventions + misconceptions
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const { data } = await supabase
-        .from("interventions")
-        .select("*")
-        .order("assigned_at", { ascending: false });
+      const [{ data: ivs }, { data: ms }] = await Promise.all([
+        supabase.from("interventions").select("*").order("assigned_at", { ascending: false }),
+        supabase
+          .from("misconceptions")
+          .select("user_id, concept, statement, tag, weakness_type, resolved, detected_at")
+          .order("detected_at", { ascending: false })
+          .limit(500),
+      ]);
       if (!mounted) return;
-      setInterventions((data || []) as Intervention[]);
+      setInterventions((ivs || []) as Intervention[]);
+      setMisconceptions((ms || []) as MisconceptionRecord[]);
     })();
     return () => { mounted = false; };
   }, []);
@@ -80,12 +86,12 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
           studentId: stu.id,
           studentName: stu.full_name || "শিক্ষার্থী",
           conceptId: w.id,
-          analysis: analyzeWeakness(w, nodes, sessions),
+          analysis: analyzeWeakness(w, nodes, sessions, misconceptions),
         });
       }
     }
     return out.sort((a, b) => b.analysis.severityScore - a.analysis.severityScore).slice(0, 12);
-  }, [students, nodes, sessions, filterStudent]);
+  }, [students, nodes, sessions, filterStudent, misconceptions]);
 
   async function assignIntervention(item: typeof analyses[number]) {
     setBusyId(item.conceptId);
