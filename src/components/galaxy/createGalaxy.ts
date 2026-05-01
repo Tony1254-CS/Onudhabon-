@@ -9,6 +9,8 @@ export type GalaxyStar = {
   mastery: number;
   emotional: "gold" | "cold-blue" | "fragile" | string | null;
   lastReviewed: string | null;
+  prerequisites?: string[];   // prereq concept names (resolved against other stars)
+  fragilePath?: string[];     // subset of prereqs whose star is fragile/weak
 };
 
 // Color mapping: gold for mastered, cold-blue for fragile, others muted
