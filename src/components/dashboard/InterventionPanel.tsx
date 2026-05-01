@@ -252,6 +252,26 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
                       </Block>
                     </div>
 
+                    {a.misconceptionExamples.length > 0 && (
+                      <div className="mt-3 rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                        <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-red-300">
+                          <AlertTriangle className="h-3.5 w-3.5" /> সঠিক ভুল ধারণা
+                        </p>
+                        <ul className="space-y-1">
+                          {a.misconceptionExamples.map((m, i) => (
+                            <li key={i} className="text-xs italic text-white/80">"{m}"</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <div className="mt-3 grid gap-2 sm:grid-cols-4">
+                      <DimBar label="পরিচিতি" value={a.dimensions.exposure} color="#60A5FA" />
+                      <DimBar label="বোধগম্যতা" value={a.dimensions.understanding} color="#22D3EE" />
+                      <DimBar label="প্রয়োগ" value={a.dimensions.application} color="#A78BFA" />
+                      <DimBar label="ধারণ" value={a.dimensions.retention} color="#F59E0B" />
+                    </div>
+
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       {existing ? (
                         <>
