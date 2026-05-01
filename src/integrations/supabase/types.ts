@@ -120,32 +120,50 @@ export type Database = {
       concept_nodes: {
         Row: {
           concept: string
+          confidence: number
           created_at: string
           emotional_tag: string | null
           id: string
+          interaction_count: number
           last_reviewed: string | null
           mastery_level: number | null
+          misconception_count: number
+          prerequisites: string[]
+          state: string
           subject: string | null
+          updated_at: string
           user_id: string
         }
         Insert: {
           concept: string
+          confidence?: number
           created_at?: string
           emotional_tag?: string | null
           id?: string
+          interaction_count?: number
           last_reviewed?: string | null
           mastery_level?: number | null
+          misconception_count?: number
+          prerequisites?: string[]
+          state?: string
           subject?: string | null
+          updated_at?: string
           user_id: string
         }
         Update: {
           concept?: string
+          confidence?: number
           created_at?: string
           emotional_tag?: string | null
           id?: string
+          interaction_count?: number
           last_reviewed?: string | null
           mastery_level?: number | null
+          misconception_count?: number
+          prerequisites?: string[]
+          state?: string
           subject?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
