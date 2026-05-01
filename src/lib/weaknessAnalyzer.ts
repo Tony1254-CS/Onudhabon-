@@ -35,9 +35,11 @@ export type WeaknessAnalysis = {
   interventionType: InterventionType;
   prerequisites: string[];
   recentMistakes: string[]; // free-text excerpts from sessions
+  misconceptionExamples: string[]; // exact wrong statements from misconceptions table
   trend: "improving" | "declining" | "flat";
   trendDelta: number;       // last - first, in percent
   lastReviewedDays: number;
+  dimensions: { exposure: number; understanding: number; application: number; retention: number };
 };
 
 const REASON_LABEL_BN: Record<WeaknessReason, string> = {
