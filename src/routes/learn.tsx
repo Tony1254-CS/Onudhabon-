@@ -321,6 +321,8 @@ function LearnPage() {
     });
     await supabase.from("misconceptions").insert(rows);
   };
+
+  const deleteConcept = async (name: string) => {
     // Optimistic local removal
     setConcepts((prev) => prev.filter((c) => c.name !== name));
     if (!userId || !online || !topic) return;
