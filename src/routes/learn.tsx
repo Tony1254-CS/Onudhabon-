@@ -144,6 +144,8 @@ function LearnPage() {
       mastery,
       emotional: stateToEmotional(state) as ConceptNode["emotional"],
       state,
+      prerequisites: c.prerequisites,
+      fragilePath: c.fragilePath,
     };
   }), [concepts]);
 
