@@ -119,50 +119,83 @@ export type Database = {
       }
       concept_nodes: {
         Row: {
+          application: number
+          challenge_score: number
           concept: string
           confidence: number
           created_at: string
           emotional_tag: string | null
+          explanation_quality: number
+          exposure: number
+          hint_dependency: number
           id: string
           interaction_count: number
+          last_retention_check: string | null
           last_reviewed: string | null
           mastery_level: number | null
           misconception_count: number
           prerequisites: string[]
+          quiz_accuracy: number
+          retention: number
+          retention_history: Json
+          retention_score: number
           state: string
           subject: string | null
+          understanding: number
           updated_at: string
           user_id: string
         }
         Insert: {
+          application?: number
+          challenge_score?: number
           concept: string
           confidence?: number
           created_at?: string
           emotional_tag?: string | null
+          explanation_quality?: number
+          exposure?: number
+          hint_dependency?: number
           id?: string
           interaction_count?: number
+          last_retention_check?: string | null
           last_reviewed?: string | null
           mastery_level?: number | null
           misconception_count?: number
           prerequisites?: string[]
+          quiz_accuracy?: number
+          retention?: number
+          retention_history?: Json
+          retention_score?: number
           state?: string
           subject?: string | null
+          understanding?: number
           updated_at?: string
           user_id: string
         }
         Update: {
+          application?: number
+          challenge_score?: number
           concept?: string
           confidence?: number
           created_at?: string
           emotional_tag?: string | null
+          explanation_quality?: number
+          exposure?: number
+          hint_dependency?: number
           id?: string
           interaction_count?: number
+          last_retention_check?: string | null
           last_reviewed?: string | null
           mastery_level?: number | null
           misconception_count?: number
           prerequisites?: string[]
+          quiz_accuracy?: number
+          retention?: number
+          retention_history?: Json
+          retention_score?: number
           state?: string
           subject?: string | null
+          understanding?: number
           updated_at?: string
           user_id?: string
         }
@@ -288,6 +321,48 @@ export type Database = {
           target_date?: string | null
           topic?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      misconceptions: {
+        Row: {
+          concept: string
+          created_at: string
+          detected_at: string
+          id: string
+          resolved: boolean
+          resolved_at: string | null
+          statement: string
+          subject: string | null
+          tag: string
+          user_id: string
+          weakness_type: string
+        }
+        Insert: {
+          concept: string
+          created_at?: string
+          detected_at?: string
+          id?: string
+          resolved?: boolean
+          resolved_at?: string | null
+          statement: string
+          subject?: string | null
+          tag: string
+          user_id: string
+          weakness_type?: string
+        }
+        Update: {
+          concept?: string
+          created_at?: string
+          detected_at?: string
+          id?: string
+          resolved?: boolean
+          resolved_at?: string | null
+          statement?: string
+          subject?: string | null
+          tag?: string
+          user_id?: string
+          weakness_type?: string
         }
         Relationships: []
       }
