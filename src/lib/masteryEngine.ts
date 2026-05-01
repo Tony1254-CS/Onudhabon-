@@ -396,3 +396,143 @@ export function daysSince(iso: string | null): number {
   if (!Number.isFinite(t)) return 0;
   return Math.max(0, (Date.now() - t) / (1000 * 60 * 60 * 24));
 }
+
+// ============================================================================
+// Dependency-aware mastery propagation
+// ============================================================================
+//
+// Concepts form a directed graph: each node lists its prerequisite concept
+// names. When a prerequisite is weak/fragile, the dependent concept's
+// effective confidence is dragged down ("you can't truly master Ohm's Law if
+// Voltage is fragile"). When prerequisites are strong, dependents get a small
+// confidence boost ("solid foundations strengthen advanced concepts").
+//
+// We do NOT mutate the underlying dimensions written to the DB — propagation
+// produces a derived `effectiveScore`, `effectiveState`, and a list of
+// fragile prerequisite names ("fragilePath") that the UI uses to highlight
+// at-risk learning chains. This keeps the raw evidence (what the student
+// actually demonstrated) separate from inferred chain effects.
+
+export type GraphNode = {
+  key: string;                 // unique id used for edges (e.g. concept name)
+  score: number;               // 0..100 raw composite
+  state: MasteryState;
+  confidence: number;          // 0..1
+  prerequisites: string[];     // keys of prereq nodes
+};
+
+export type PropagatedNode<N extends GraphNode = GraphNode> = N & {
+  effectiveScore: number;            // 0..100 after propagation
+  effectiveState: MasteryState;
+  effectiveConfidence: number;       // 0..1
+  fragilePath: string[];             // prereq keys that are weak/fragile
+  foundationStrength: number;        // 0..1 — mean prereq score / 100
+};
+
+// Propagate prerequisite influence over a graph (single pass, breadth-first
+// from roots = nodes without prereqs). Cycles are ignored after first visit.
+export function propagateGraph<N extends GraphNode>(nodes: N[]): PropagatedNode<N>[] {
+  const byKey = new Map<string, N>();
+  nodes.forEach((n) => byKey.set(n.key, n));
+
+  // Memoize results to avoid recomputing in deep chains.
+  const cache = new Map<string, PropagatedNode<N>>();
+  const visiting = new Set<string>();
+
+  function resolve(key: string): PropagatedNode<N> | null {
+    const node = byKey.get(key);
+    if (!node) return null;
+    const cached = cache.get(key);
+    if (cached) return cached;
+    if (visiting.has(key)) {
+      // Cycle — fall back to raw values for this node.
+      return {
+        ...node,
+        effectiveScore: node.score,
+        effectiveState: node.state,
+        effectiveConfidence: node.confidence,
+        fragilePath: [],
+        foundationStrength: 1,
+      };
+    }
+    visiting.add(key);
+
+    const prereqs = (node.prerequisites || [])
+      .map((k) => resolve(k))
+      .filter((p): p is PropagatedNode<N> => !!p);
+
+    let effectiveScore = node.score;
+    let effectiveConfidence = node.confidence;
+    const fragilePath: string[] = [];
+    let foundationStrength = 1;
+
+    if (prereqs.length > 0) {
+      // Foundation strength = mean effective score of prereqs (0..1)
+      const meanPrereqScore =
+        prereqs.reduce((a, p) => a + p.effectiveScore, 0) / prereqs.length / 100;
+      foundationStrength = clamp01(meanPrereqScore);
+
+      // Weakness pull: each fragile/weak prereq drags the dependent down.
+      // Strength of pull scales with how weak the prereq is, capped per node.
+      let drag = 0;
+      let lift = 0;
+      for (const p of prereqs) {
+        const isWeak =
+          p.effectiveState === "fragile" ||
+          p.effectiveState === "unknown" ||
+          p.effectiveScore < 45;
+        if (isWeak) {
+          fragilePath.push(p.key);
+          // up to ~25pt drag per very-weak prereq, but the SUM caps at 35pt
+          drag += Math.max(0, (60 - p.effectiveScore)) * 0.35;
+        } else if (p.effectiveScore >= 75) {
+          // Strong prereq lifts dependent slightly (foundation bonus)
+          lift += Math.max(0, (p.effectiveScore - 75)) * 0.10;
+        }
+      }
+      drag = Math.min(35, drag);
+      lift = Math.min(8, lift);
+
+      effectiveScore = clamp(node.score - drag + lift);
+
+      // Confidence falls when foundation is shaky.
+      const confDrag = (1 - foundationStrength) * 0.4;
+      effectiveConfidence = clamp01(node.confidence - confDrag);
+    }
+
+    const effectiveState = deriveEffectiveState({
+      raw: node.state,
+      score: effectiveScore,
+      confidence: effectiveConfidence,
+      fragileCount: fragilePath.length,
+    });
+
+    const result: PropagatedNode<N> = {
+      ...node,
+      effectiveScore,
+      effectiveState,
+      effectiveConfidence,
+      fragilePath,
+      foundationStrength,
+    };
+    cache.set(key, result);
+    visiting.delete(key);
+    return result;
+  }
+
+  return nodes.map((n) => resolve(n.key)!).filter(Boolean);
+}
+
+function deriveEffectiveState(args: {
+  raw: MasteryState;
+  score: number;
+  confidence: number;
+  fragileCount: number;
+}): MasteryState {
+  // If the raw state was strong but the dependency chain is shaky,
+  // demote it to fragile to surface the at-risk chain in the UI.
+  if (args.fragileCount > 0 && (args.raw === "mastered" || args.raw === "practiced")) {
+    if (args.confidence < 0.55 || args.score < 70) return "fragile";
+  }
+  return bandForScore(args.score);
+}
