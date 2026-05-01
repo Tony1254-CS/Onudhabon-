@@ -530,6 +530,25 @@ export function createGalaxy(
       if (s.pivot.visible) s.pivot.rotation.y += s.angularSpeed;
     });
 
+    // Update prerequisite link endpoints to track moving planets.
+    const tmpA = new THREE.Vector3();
+    const tmpB = new THREE.Vector3();
+    const t = performance.now() * 0.003;
+    linkRefs.forEach((l) => {
+      if (!l.line.visible) return;
+      l.from.mesh.getWorldPosition(tmpA);
+      l.to.mesh.getWorldPosition(tmpB);
+      const arr = l.geom.attributes.position.array as Float32Array;
+      arr[0] = tmpA.x; arr[1] = tmpA.y; arr[2] = tmpA.z;
+      arr[3] = tmpB.x; arr[4] = tmpB.y; arr[5] = tmpB.z;
+      l.geom.attributes.position.needsUpdate = true;
+      // Pulse fragile links to draw the eye to at-risk learning chains.
+      if (l.fragile) {
+        const mat = l.line.material as THREE.LineBasicMaterial;
+        mat.opacity = 0.55 + 0.35 * (0.5 + 0.5 * Math.sin(t));
+      }
+    });
+
     // Hover detection
     raycaster.setFromCamera(mouse, camera);
     const visibleMeshes = starRefs.filter((s) => s.pivot.visible).map((s) => s.mesh);
