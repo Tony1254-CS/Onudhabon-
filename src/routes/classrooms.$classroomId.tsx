@@ -183,6 +183,15 @@ function ClassroomDetail() {
           if (mounted && selfProfile) {
             setProfiles({ [selfProfile.id]: selfProfile as StudentProfile });
           }
+
+          // Count unread intervention notifications for the student
+          const { count } = await supabase
+            .from("notifications")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", session.user.id)
+            .eq("type", "intervention_assigned")
+            .is("read_at", null);
+          if (mounted) setUnreadInterventions(count || 0);
         }
       } catch (error) {
         console.error(error);
