@@ -127,7 +127,17 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
       .select("*")
       .single();
     setBusyId(null);
-    if (!error && data) setInterventions((prev) => [data as Intervention, ...prev]);
+    if (!error && data) {
+      setInterventions((prev) => [data as Intervention, ...prev]);
+      // Notify the student
+      await supabase.from("notifications").insert({
+        user_id: item.studentId,
+        type: "intervention_assigned",
+        title: `নতুন হস্তক্ষেপ: ${item.analysis.concept}`,
+        body: item.analysis.suggestedAction,
+        intervention_id: (data as Intervention).id,
+      });
+    }
   }
 
   async function updateStatus(iv: Intervention, status: string) {
