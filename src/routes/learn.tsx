@@ -272,16 +272,9 @@ function LearnPage() {
       .from("concept_nodes")
       .upsert(upserts, { onConflict: "user_id,subject,concept" });
 
-    // Reflect server-side state back into the live UI confidence band.
-    setConcepts((prev) => {
-      const map = new Map(prev.map((p) => [p.name, p] as const));
-      upserts.forEach((u) => {
-        const cur = map.get(u.concept);
-        const conf = stateToConfidence(u.state as MasteryState);
-        map.set(u.concept, cur ? { ...cur, confidence: conf } : { name: u.concept, confidence: conf });
-      });
-      return Array.from(map.values());
-    });
+    // Re-load with dependency-aware propagation so the UI reflects fragile
+    // chains caused by weak prerequisites.
+    await loadConceptsForTopic(topicVal);
   };
 
   // Apply quiz outcomes (one row per question) to the concept the question is about.
