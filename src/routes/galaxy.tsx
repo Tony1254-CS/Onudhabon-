@@ -48,7 +48,7 @@ function GalaxyPage() {
       if (!session) { navigate({ to: "/login" }); return; }
       const { data } = await supabase
         .from("concept_nodes")
-        .select("id, concept, subject, mastery_level, emotional_tag, last_reviewed")
+        .select("id, concept, subject, mastery_level, emotional_tag, last_reviewed, state")
         .order("created_at", { ascending: false });
       if (!m) return;
       setStars(
@@ -57,7 +57,7 @@ function GalaxyPage() {
           concept: r.concept,
           subject: r.subject,
           mastery: r.mastery_level ?? 0,
-          emotional: r.emotional_tag,
+          emotional: (r as any).state === "fragile" ? "fragile" : (r.emotional_tag as any),
           lastReviewed: r.last_reviewed,
         })),
       );
