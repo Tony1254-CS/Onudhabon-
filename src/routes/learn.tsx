@@ -132,10 +132,6 @@ function LearnPage() {
     emotional: c.confidence === "strong" ? "gold" : c.confidence === "weak" ? "cold-blue" : "fragile",
   })), [concepts]);
 
-  const confidenceToMastery = (c: ExtractedConcept["confidence"]) =>
-    c === "strong" ? 1 : c === "weak" ? 0.5 : 0.15;
-  const confidenceToEmotional = (c: ExtractedConcept["confidence"]) =>
-    c === "strong" ? "gold" : c === "weak" ? "cold-blue" : "fragile";
 
   const loadConceptsForTopic = async (t: string) => {
     // Always try IDB first so it works offline / faster paint
