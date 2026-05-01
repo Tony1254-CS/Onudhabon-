@@ -153,8 +153,10 @@ export function createGalaxy(
   // ============ Orbit/planet groups ============
   const orbitsGroup = new THREE.Group();
   const planetsGroup = new THREE.Group();
+  const linksGroup = new THREE.Group(); // prerequisite dependency lines
   scene.add(orbitsGroup);
   scene.add(planetsGroup);
+  scene.add(linksGroup);
 
   // Controls
   const controls = new OrbitControls(camera, renderer.domElement);
