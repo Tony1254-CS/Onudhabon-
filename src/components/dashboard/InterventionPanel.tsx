@@ -395,3 +395,18 @@ function TrendBadge({ trend, delta }: { trend: "improving" | "declining" | "flat
     </span>
   );
 }
+
+function DimBar({ label, value, color }: { label: string; value: number; color: string }) {
+  const pct = Math.round(Math.max(0, Math.min(1, value)) * 100);
+  return (
+    <div className="rounded-md border border-white/5 bg-white/[0.02] p-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] uppercase tracking-wider text-white/50">{label}</span>
+        <span className="text-[11px] font-semibold" style={{ color }}>{pct}%</span>
+      </div>
+      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/5">
+        <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+      </div>
+    </div>
+  );
+}
