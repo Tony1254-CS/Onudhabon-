@@ -10,6 +10,7 @@ import { ConceptHeatmap } from "@/components/dashboard/ConceptHeatmap";
 import { MasteryChart } from "@/components/dashboard/MasteryChart";
 import { Timeline, type TimelineEntry } from "@/components/dashboard/Timeline";
 import { InterventionPanel } from "@/components/dashboard/InterventionPanel";
+import type { ConceptInput, SessionInput } from "@/lib/weaknessAnalyzer";
 
 export type StudentRow = {
   id: string;
