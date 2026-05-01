@@ -76,12 +76,16 @@ function GalaxyPage() {
     });
 
     galaxyRef.current = g;
+    g.setSubjectFilter(filter === "সব" ? null : filter);
+    if (!loading) {
+      g.setStars(stars);
+    }
 
     return () => {
       g.destroy();
       galaxyRef.current = null;
     };
-  }, [authed]);
+  }, [authed, filter, loading, stars]);
 
   // Push stars when ready
   useEffect(() => {
