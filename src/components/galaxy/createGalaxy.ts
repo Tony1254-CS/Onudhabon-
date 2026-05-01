@@ -197,6 +197,12 @@ export function createGalaxy(
   function clearStars() {
     while (planetsGroup.children.length) planetsGroup.remove(planetsGroup.children[0]);
     while (orbitsGroup.children.length) orbitsGroup.remove(orbitsGroup.children[0]);
+    while (linksGroup.children.length) {
+      const obj = linksGroup.children[0] as THREE.Line;
+      linksGroup.remove(obj);
+      (obj.geometry as THREE.BufferGeometry)?.dispose?.();
+      ((obj.material as THREE.Material) as any)?.dispose?.();
+    }
     starRefs.forEach((s) => {
       s.label.element.remove();
       s.label.removeFromParent();
