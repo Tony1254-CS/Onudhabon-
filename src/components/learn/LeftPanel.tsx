@@ -69,16 +69,38 @@ export function LeftPanel({
         ) : (
           <ul className="space-y-2">
             {nodes.map((n) => {
-              const color = n.emotional === "gold" ? "#F59E0B" : n.emotional === "fragile" ? "#EF4444" : "#60A5FA";
+              const state: MasteryState = n.state
+                ?? (n.emotional === "gold" ? "mastered" : n.emotional === "fragile" ? "fragile" : "developing");
+              const color = STATE_COLOR[state];
+              const label = STATE_LABEL_BN[state];
+              const isNew = state === "exposed" && n.mastery < 0.3;
               return (
                 <motion.li
                   key={n.id}
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/[0.03] transition-colors"
+                  className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${
+                    state === "fragile"
+                      ? "ring-1 ring-red-500/30 bg-red-500/[0.04]"
+                      : state === "mastered"
+                      ? "bg-amber-400/[0.04]"
+                      : "hover:bg-white/[0.03]"
+                  } ${isNew ? "animate-pulse" : ""}`}
+                  title={`${n.name} • ${label} • ${Math.round(n.mastery * 100)}%`}
                 >
                   <MasteryRing value={n.mastery} color={color} />
-                  <span className="text-sm font-bangla text-[var(--text-primary)] truncate">{n.name}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bangla text-[var(--text-primary)] truncate">{n.name}</div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span
+                        className="inline-block px-1.5 py-px rounded-full text-[9px] font-bangla"
+                        style={{ background: `${color}22`, color, border: `1px solid ${color}55` }}
+                      >
+                        {label}
+                      </span>
+                      <span className="text-[10px] tabular-nums text-white/40">{Math.round(n.mastery * 100)}</span>
+                    </div>
+                  </div>
                 </motion.li>
               );
             })}
