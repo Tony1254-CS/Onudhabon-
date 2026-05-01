@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Link as LinkIcon, FileText, Upload, Trash2, Copy, Users, BarChart3, Loader2, Plus, ExternalLink, Download, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/landing/Navbar";
+import { StudentInterventionsTab } from "@/components/classroom/StudentInterventionsTab";
+import { Bell } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/classrooms/$classroomId")({
@@ -26,7 +28,8 @@ function ClassroomDetail() {
   const [memberCount, setMemberCount] = useState(0);
   const [profiles, setProfiles] = useState<Record<string, StudentProfile>>({});
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"stream" | "members" | "monitor">("stream");
+  const [tab, setTab] = useState<"stream" | "members" | "monitor" | "interventions">("stream");
+  const [unreadInterventions, setUnreadInterventions] = useState(0);
   const [authorized, setAuthorized] = useState(false);
   const [accessMessage, setAccessMessage] = useState<string | null>(null);
 
@@ -180,6 +183,15 @@ function ClassroomDetail() {
           if (mounted && selfProfile) {
             setProfiles({ [selfProfile.id]: selfProfile as StudentProfile });
           }
+
+          // Count unread intervention notifications for the student
+          const { count } = await supabase
+            .from("notifications")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", session.user.id)
+            .eq("type", "intervention_assigned")
+            .is("read_at", null);
+          if (mounted) setUnreadInterventions(count || 0);
         }
       } catch (error) {
         console.error(error);
@@ -276,6 +288,19 @@ function ClassroomDetail() {
           <TabBtn active={tab === "stream"} onClick={() => setTab("stream")} label="স্ট্রিম" />
           <TabBtn active={tab === "members"} onClick={() => setTab("members")} label={`সদস্য (${memberCount})`} />
           {isTeacher && <TabBtn active={tab === "monitor"} onClick={() => setTab("monitor")} label="মনিটরিং" />}
+          {!isTeacher && (
+            <button
+              onClick={() => { setTab("interventions"); setUnreadInterventions(0); }}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${tab === "interventions" ? "bg-white/10 text-white" : "text-white/50 hover:text-white hover:bg-white/5"}`}
+            >
+              <Bell className="h-3 w-3" /> হস্তক্ষেপ
+              {unreadInterventions > 0 && (
+                <span className="ml-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-bold text-black tabular-nums">
+                  {unreadInterventions}
+                </span>
+              )}
+            </button>
+          )}
         </div>
 
         {tab === "stream" && (
@@ -286,6 +311,9 @@ function ClassroomDetail() {
         )}
         {tab === "monitor" && isTeacher && (
           <MonitorTab members={members} profiles={profiles} stats={conceptStats} classAvg={classAvg} />
+        )}
+        {tab === "interventions" && !isTeacher && userId && (
+          <StudentInterventionsTab studentId={userId} />
         )}
       </main>
     </div>
