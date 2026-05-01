@@ -337,7 +337,7 @@ function LearnPage() {
         );
         mergeConcepts(sanitized, "merge");
         // Persist WITHOUT the mastery-burst side-effect for teaching mode (no "strong" present anyway).
-        persistConcepts(topicVal, sanitized);
+        persistConcepts(topicVal, sanitized, "discussion");
       }
     } catch { /* silent */ }
     finally { setExtracting(false); }
@@ -359,7 +359,7 @@ function LearnPage() {
       if (Array.isArray(j.concepts) && j.concepts.length) {
         const verdicts = j.concepts as ExtractedConcept[];
         mergeConcepts(verdicts, "verdict");
-        persistConcepts(topicVal, verdicts);
+        persistConcepts(topicVal, verdicts, "explanation");
       }
     } catch { /* silent */ }
     finally { setExtracting(false); }
@@ -469,7 +469,7 @@ function LearnPage() {
         messages: messages as any,
       });
       // Final upsert ensures concepts persisted even if extraction calls were dropped
-      await persistConcepts(topic, concepts);
+      await persistConcepts(topic, concepts, phase === "socratic" ? "explanation" : "discussion");
     }
   };
 
@@ -577,7 +577,7 @@ function LearnPage() {
                   }
                   if (incoming.length) {
                     mergeConcepts(incoming);
-                    persistConcepts(t, incoming);
+                    persistConcepts(t, incoming, "discussion");
                   }
                   const intro: ChatMsg = { role: "user", content: `"${t}" বিষয়ের mind-map তৈরি করেছি। এবার প্রতিটি ধারণা ধরে ধরে শেখাও।` };
                   setMessages([intro]);
