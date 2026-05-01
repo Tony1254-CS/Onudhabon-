@@ -47,6 +47,7 @@ function StudentDashboard() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [interventions, setInterventions] = useState<Intervention[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatingPlan, setGeneratingPlan] = useState(false);
   const [showInbox, setShowInbox] = useState(false);
