@@ -24,6 +24,22 @@ import { useSpeech } from "@/hooks/useSpeech";
 import { Volume2, VolumeX, Brain, BookOpen, Activity, Trophy, ExternalLink, ChevronRight, PanelRightClose } from "lucide-react";
 import { cacheSession, idbPut, idbGet } from "@/lib/idb";
 import { toast } from "sonner";
+import {
+  applyUpdate, fromDb, toDbPatch, type MasteryState, type MasteryNode,
+} from "@/lib/masteryEngine";
+
+// Map the engine's progressive state → the legacy 3-band UI confidence used by MindMap/LeftPanel.
+const stateToConfidence = (s: MasteryState): ExtractedConcept["confidence"] =>
+  s === "mastered" || s === "practiced" ? "strong"
+  : s === "developing" || s === "exposed" ? "weak"
+  : "gap"; // unknown, fragile
+
+const stateToEmotional = (s: MasteryState) =>
+  s === "mastered" ? "gold"
+  : s === "fragile" ? "fragile"
+  : s === "practiced" ? "gold"
+  : s === "developing" || s === "exposed" ? "cold-blue"
+  : "fragile";
 
 type LearnSearch = { topic?: string };
 
@@ -108,18 +124,25 @@ function LearnPage() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, streaming]);
 
-  // Derive left-panel concept nodes from extracted concepts
-  const leftNodes: ConceptNode[] = useMemo(() => concepts.map((c, i) => ({
-    id: `${i}-${c.name}`,
-    name: c.name,
-    mastery: c.confidence === "strong" ? 1 : c.confidence === "weak" ? 0.5 : 0.15,
-    emotional: c.confidence === "strong" ? "gold" : c.confidence === "weak" ? "cold-blue" : "fragile",
-  })), [concepts]);
+  // Derive left-panel concept nodes from extracted concepts.
+  // We don't have the full per-row score here, so we approximate state from the
+  // legacy 3-band confidence — close enough for a sidebar; the engine remains
+  // authoritative server-side.
+  const leftNodes: ConceptNode[] = useMemo(() => concepts.map((c, i) => {
+    const mastery = c.confidence === "strong" ? 0.9 : c.confidence === "weak" ? 0.5 : 0.25;
+    const state: MasteryState =
+      c.confidence === "strong" ? "mastered"
+      : c.confidence === "weak" ? "developing"
+      : "exposed";
+    return {
+      id: `${i}-${c.name}`,
+      name: c.name,
+      mastery,
+      emotional: stateToEmotional(state) as ConceptNode["emotional"],
+      state,
+    };
+  }), [concepts]);
 
-  const confidenceToMastery = (c: ExtractedConcept["confidence"]) =>
-    c === "strong" ? 1 : c === "weak" ? 0.5 : 0.15;
-  const confidenceToEmotional = (c: ExtractedConcept["confidence"]) =>
-    c === "strong" ? "gold" : c === "weak" ? "cold-blue" : "fragile";
 
   const loadConceptsForTopic = async (t: string) => {
     // Always try IDB first so it works offline / faster paint
@@ -129,14 +152,27 @@ function LearnPage() {
     if (!userId || !online) return;
     const { data } = await supabase
       .from("concept_nodes")
-      .select("concept, mastery_level, emotional_tag")
+      .select("concept, mastery_level, confidence, interaction_count, misconception_count, last_reviewed, state")
       .eq("user_id", userId)
       .eq("subject", t);
     if (!data) return;
-    const restored: ExtractedConcept[] = data.map((r) => ({
-      name: r.concept,
-      confidence: (r.mastery_level ?? 0) >= 0.9 ? "strong" : (r.mastery_level ?? 0) >= 0.4 ? "weak" : "gap",
-    }));
+    // Decay sweep: apply time-based mastery decay for any row not reviewed in 7+ days.
+    const decayed: any[] = [];
+    const restored: ExtractedConcept[] = data.map((r) => {
+      let node = fromDb(r as any);
+      const days = node.lastReviewed
+        ? Math.max(0, (Date.now() - new Date(node.lastReviewed).getTime()) / 86400000)
+        : 0;
+      if (days >= 7 && node.score > 0) {
+        node = applyUpdate(node, { type: "decay", daysSince: days });
+        decayed.push({ user_id: userId, concept: r.concept, subject: t, ...toDbPatch(node) });
+      }
+      return { name: r.concept, confidence: stateToConfidence(node.state) };
+    });
+    if (decayed.length) {
+      // Fire-and-forget: persist decayed scores so the next load reflects current state.
+      supabase.from("concept_nodes").upsert(decayed, { onConflict: "user_id,subject,concept" });
+    }
     if (restored.length) {
       setConcepts(restored);
       // Refresh local cache for offline use
@@ -144,46 +180,112 @@ function LearnPage() {
     }
   };
 
-  const persistConcepts = async (topicVal: string, items: ExtractedConcept[]) => {
+  // Persist a batch of concept observations through the progressive mastery engine.
+  // - kind="discussion": tutor talked about it. Cap at "exposed".
+  // - kind="explanation": student-led explanation in Socratic phase. Quality from extractor verdict.
+  // Concepts NEVER jump from unknown → mastered: caps + per-update score deltas enforce this.
+  const persistConcepts = async (
+    topicVal: string,
+    items: ExtractedConcept[],
+    kind: "discussion" | "explanation" = "discussion",
+  ) => {
     if (!topicVal || !items.length) return;
-    // Detect newly mastered concepts vs previous cache
-    const prev = (await idbGet<ExtractedConcept[]>("concept_nodes", `topic_${topicVal}`)) || [];
-    const prevMap = new Map(prev.map((p) => [p.name, p.confidence]));
-    const newlyMastered = items.filter(
-      (c) => c.confidence === "strong" && prevMap.get(c.name) !== "strong",
-    );
-    // Cache locally for full offline mind-map
+    // Cache locally for full offline mind-map (UI bands use legacy 3-band).
     await idbPut("concept_nodes", `topic_${topicVal}`, items);
 
-    if (newlyMastered.length) {
-      // Queue celebrations for the Galaxy page
+    if (!userId || !online) return;
+
+    // Fetch existing rows in one round-trip.
+    const names = items.map((c) => c.name);
+    const { data: existing } = await supabase
+      .from("concept_nodes")
+      .select("concept, mastery_level, confidence, interaction_count, misconception_count, last_reviewed, state")
+      .eq("user_id", userId)
+      .eq("subject", topicVal)
+      .in("concept", names);
+
+    const byName = new Map<string, any>();
+    (existing ?? []).forEach((r: any) => byName.set(r.concept, r));
+
+    const newlyMasteredNames: string[] = [];
+    const upserts = items.map((c) => {
+      const prevRow = byName.get(c.name);
+      const prevNode: MasteryNode = fromDb(prevRow);
+      const update = kind === "discussion"
+        ? { type: "discussion" as const }
+        : { type: "explanation" as const, quality: c.confidence };
+      const next = applyUpdate(prevNode, update);
+      if (next.state === "mastered" && prevNode.state !== "mastered") {
+        newlyMasteredNames.push(c.name);
+      }
+      return {
+        user_id: userId,
+        concept: c.name,
+        subject: topicVal,
+        ...toDbPatch(next),
+      };
+    });
+
+    // Celebrations: only when engine actually promoted to mastered.
+    if (newlyMasteredNames.length) {
       const queueRaw = localStorage.getItem("galaxy_celebrations");
       const queue: string[] = queueRaw ? JSON.parse(queueRaw) : [];
-      newlyMastered.forEach((c) => {
-        queue.push(`${topicVal}::${c.name}`);
-        toast.success(`🌟 নতুন তারা! "${c.name}" আয়ত্তে এসেছে`, {
+      newlyMasteredNames.forEach((name) => {
+        queue.push(`${topicVal}::${name}`);
+        toast.success(`🌟 নতুন তারা! "${name}" আয়ত্তে এসেছে`, {
           description: "তোমার জ্ঞানের মহাবিশ্বে যোগ হলো একটি উজ্জ্বল তারা।",
           duration: 4500,
         });
       });
       localStorage.setItem("galaxy_celebrations", JSON.stringify(queue.slice(-50)));
-      // Local in-page sparkle burst
-      window.dispatchEvent(new CustomEvent("mastery-burst", { detail: { count: newlyMastered.length } }));
+      window.dispatchEvent(new CustomEvent("mastery-burst", { detail: { count: newlyMasteredNames.length } }));
     }
 
-    if (!userId || !online) return;
-    const rows = items.map((c) => ({
-      user_id: userId,
-      concept: c.name,
-      subject: topicVal,
-      mastery_level: confidenceToMastery(c.confidence),
-      emotional_tag: confidenceToEmotional(c.confidence),
-      last_reviewed: new Date().toISOString(),
-    }));
     await supabase
       .from("concept_nodes")
-      .upsert(rows, { onConflict: "user_id,subject,concept" });
+      .upsert(upserts, { onConflict: "user_id,subject,concept" });
+
+    // Reflect server-side state back into the live UI confidence band.
+    setConcepts((prev) => {
+      const map = new Map(prev.map((p) => [p.name, p] as const));
+      upserts.forEach((u) => {
+        const cur = map.get(u.concept);
+        const conf = stateToConfidence(u.state as MasteryState);
+        map.set(u.concept, cur ? { ...cur, confidence: conf } : { name: u.concept, confidence: conf });
+      });
+      return Array.from(map.values());
+    });
   };
+
+  // Apply quiz outcomes (one row per question) to the concept the question is about.
+  // Currently quizzes are topic-scoped; we attribute results to the topic itself
+  // plus any currently-tracked concepts as light reinforcement.
+  const recordQuizOutcome = async (correctCount: number, total: number) => {
+    if (!topic || !userId || !online || total === 0) return;
+    // Topic-level bump first (always present as a concept row).
+    const { data: existing } = await supabase
+      .from("concept_nodes")
+      .select("concept, mastery_level, confidence, interaction_count, misconception_count, last_reviewed, state")
+      .eq("user_id", userId)
+      .eq("subject", topic);
+    const byName = new Map<string, any>();
+    (existing ?? []).forEach((r: any) => byName.set(r.concept, r));
+
+    const targets = [topic, ...concepts.map((c) => c.name)].filter(
+      (v, i, a) => a.indexOf(v) === i,
+    );
+    const upserts = targets.map((name) => {
+      let node = fromDb(byName.get(name));
+      // Apply each question outcome sequentially: `correctCount` correct, the rest wrong.
+      for (let i = 0; i < correctCount; i++) node = applyUpdate(node, { type: "quiz", correct: true });
+      for (let i = 0; i < total - correctCount; i++) node = applyUpdate(node, { type: "quiz", correct: false });
+      return { user_id: userId, concept: name, subject: topic, ...toDbPatch(node) };
+    });
+    await supabase
+      .from("concept_nodes")
+      .upsert(upserts, { onConflict: "user_id,subject,concept" });
+  };
+
 
   const deleteConcept = async (name: string) => {
     // Optimistic local removal
@@ -259,7 +361,7 @@ function LearnPage() {
         );
         mergeConcepts(sanitized, "merge");
         // Persist WITHOUT the mastery-burst side-effect for teaching mode (no "strong" present anyway).
-        persistConcepts(topicVal, sanitized);
+        persistConcepts(topicVal, sanitized, "discussion");
       }
     } catch { /* silent */ }
     finally { setExtracting(false); }
@@ -281,7 +383,7 @@ function LearnPage() {
       if (Array.isArray(j.concepts) && j.concepts.length) {
         const verdicts = j.concepts as ExtractedConcept[];
         mergeConcepts(verdicts, "verdict");
-        persistConcepts(topicVal, verdicts);
+        persistConcepts(topicVal, verdicts, "explanation");
       }
     } catch { /* silent */ }
     finally { setExtracting(false); }
@@ -391,7 +493,7 @@ function LearnPage() {
         messages: messages as any,
       });
       // Final upsert ensures concepts persisted even if extraction calls were dropped
-      await persistConcepts(topic, concepts);
+      await persistConcepts(topic, concepts, phase === "socratic" ? "explanation" : "discussion");
     }
   };
 
@@ -499,7 +601,7 @@ function LearnPage() {
                   }
                   if (incoming.length) {
                     mergeConcepts(incoming);
-                    persistConcepts(t, incoming);
+                    persistConcepts(t, incoming, "discussion");
                   }
                   const intro: ChatMsg = { role: "user", content: `"${t}" বিষয়ের mind-map তৈরি করেছি। এবার প্রতিটি ধারণা ধরে ধরে শেখাও।` };
                   setMessages([intro]);
@@ -624,7 +726,7 @@ function LearnPage() {
                   id: "quiz",
                   label: "Quiz",
                   icon: <Trophy className="w-3.5 h-3.5" />,
-                  content: <QuizPanel topic={topic} online={online} />,
+                  content: <QuizPanel topic={topic} online={online} onSubmit={({ score, total }) => recordQuizOutcome(score, total)} />,
                 },
                 {
                   id: "res",
