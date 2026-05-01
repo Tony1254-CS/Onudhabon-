@@ -162,8 +162,8 @@ function LearnPage() {
     if (!data) return;
     // Decay sweep: apply time-based mastery decay for any row not reviewed in 7+ days.
     const decayed: any[] = [];
-    const restored: ExtractedConcept[] = data.map((r) => {
-      let node = fromDb(r as any);
+    const nodesForGraph = data.map((r: any) => {
+      let node = fromDb(r);
       const days = node.lastReviewed
         ? Math.max(0, (Date.now() - new Date(node.lastReviewed).getTime()) / 86400000)
         : 0;
@@ -171,8 +171,25 @@ function LearnPage() {
         node = applyUpdate(node, { type: "decay", daysSince: days });
         decayed.push({ user_id: userId, concept: r.concept, subject: t, ...toDbPatch(node) });
       }
-      return { name: r.concept, confidence: stateToConfidence(node.state) };
+      return {
+        key: r.concept as string,
+        score: node.score,
+        state: node.state,
+        confidence: node.confidence,
+        prerequisites: (r.prerequisites as string[] | null) ?? [],
+      };
     });
+    // Run dependency-aware propagation across the whole topic graph.
+    const propagated = propagateGraph(nodesForGraph);
+    const restored: ExtractedConcept[] = propagated.map((p) => ({
+      name: p.key,
+      confidence: stateToConfidence(p.effectiveState),
+      prerequisites: p.prerequisites,
+      fragilePath: p.fragilePath,
+      reason: p.fragilePath.length
+        ? `ভিত্তি দুর্বল: ${p.fragilePath.slice(0, 2).join(", ")}`
+        : undefined,
+    }));
     if (decayed.length) {
       // Fire-and-forget: persist decayed scores so the next load reflects current state.
       supabase.from("concept_nodes").upsert(decayed, { onConflict: "user_id,subject,concept" });
