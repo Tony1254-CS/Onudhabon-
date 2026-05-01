@@ -28,6 +28,9 @@ import {
   applyUpdate, fromDb, toDbPatch, type MasteryState, type MasteryNode,
 } from "@/lib/masteryEngine";
 
+// Full column list for round-tripping a concept_node row through the engine.
+const NODE_COLS = "concept, mastery_level, confidence, state, interaction_count, misconception_count, last_reviewed, exposure, understanding, application, retention, explanation_quality, challenge_score, quiz_accuracy, retention_score, hint_dependency, last_retention_check, retention_history";
+
 // Map the engine's progressive state → the legacy 3-band UI confidence used by MindMap/LeftPanel.
 const stateToConfidence = (s: MasteryState): ExtractedConcept["confidence"] =>
   s === "mastered" || s === "practiced" ? "strong"
@@ -152,7 +155,7 @@ function LearnPage() {
     if (!userId || !online) return;
     const { data } = await supabase
       .from("concept_nodes")
-      .select("concept, mastery_level, confidence, interaction_count, misconception_count, last_reviewed, state")
+      .select(NODE_COLS)
       .eq("user_id", userId)
       .eq("subject", t);
     if (!data) return;
@@ -199,7 +202,7 @@ function LearnPage() {
     const names = items.map((c) => c.name);
     const { data: existing } = await supabase
       .from("concept_nodes")
-      .select("concept, mastery_level, confidence, interaction_count, misconception_count, last_reviewed, state")
+      .select(NODE_COLS)
       .eq("user_id", userId)
       .eq("subject", topicVal)
       .in("concept", names);
@@ -265,7 +268,7 @@ function LearnPage() {
     // Topic-level bump first (always present as a concept row).
     const { data: existing } = await supabase
       .from("concept_nodes")
-      .select("concept, mastery_level, confidence, interaction_count, misconception_count, last_reviewed, state")
+      .select(NODE_COLS)
       .eq("user_id", userId)
       .eq("subject", topic);
     const byName = new Map<string, any>();
