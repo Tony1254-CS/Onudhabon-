@@ -9,6 +9,7 @@ import { StudentList } from "@/components/dashboard/StudentList";
 import { ConceptHeatmap } from "@/components/dashboard/ConceptHeatmap";
 import { MasteryChart } from "@/components/dashboard/MasteryChart";
 import { Timeline, type TimelineEntry } from "@/components/dashboard/Timeline";
+import { InterventionPanel } from "@/components/dashboard/InterventionPanel";
 
 export type StudentRow = {
   id: string;
@@ -23,7 +24,7 @@ export const Route = createFileRoute("/dashboard")({
   component: DashboardPage,
 });
 
-type ConceptNode = { id: string; user_id: string; concept: string; subject: string | null; mastery_level: number | null; last_reviewed: string | null; created_at: string };
+type ConceptNode = { id: string; user_id: string; concept: string; subject: string | null; mastery_level: number | null; last_reviewed: string | null; created_at: string; confidence?: number | null; interaction_count?: number | null; misconception_count?: number | null; state?: string | null; prerequisites?: string[] | null };
 type Session = { id: string; user_id: string; topic: string | null; subject: string | null; mastery_score: number | null; cognitive_state: string | null; created_at: string };
 
 function DashboardPage() {
@@ -31,6 +32,7 @@ function DashboardPage() {
   const [authChecked, setAuthChecked] = useState(false);
   const [allowed, setAllowed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [teacherId, setTeacherId] = useState<string | null>(null);
 
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [nodes, setNodes] = useState<ConceptNode[]>([]);
@@ -49,6 +51,7 @@ function DashboardPage() {
       const role = profile?.role;
       if (role === "student") { navigate({ to: "/learn" }); return; }
       if (role !== "teacher" && role !== "parent") { navigate({ to: "/learn" }); return; }
+      setTeacherId(session.user.id);
       setAllowed(true);
       setAuthChecked(true);
     })();
