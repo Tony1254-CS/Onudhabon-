@@ -220,6 +220,26 @@ function StudentDashboard() {
     await supabase.from("practice_plans").update({ status: "archived" }).eq("id", id);
   };
 
+  const submitIntervention = async (iv: Intervention, response: string) => {
+    const now = new Date().toISOString();
+    setInterventions((p) => p.map((x) => (x.id === iv.id ? { ...x, status: "submitted", student_response: response, submitted_at: now } : x)));
+    const { error } = await supabase
+      .from("interventions")
+      .update({ status: "submitted", student_response: response, submitted_at: now })
+      .eq("id", iv.id);
+    if (error) {
+      toast.error("জমা দেওয়া যায়নি");
+      return;
+    }
+    toast.success("শিক্ষককে পাঠানো হয়েছে!");
+  };
+
+  const startIntervention = async (iv: Intervention) => {
+    if (iv.status !== "assigned") return;
+    setInterventions((p) => p.map((x) => (x.id === iv.id ? { ...x, status: "in_progress" } : x)));
+    await supabase.from("interventions").update({ status: "in_progress" }).eq("id", iv.id);
+  };
+
   if (!authChecked) {
     return <div className="grid min-h-screen place-items-center bg-[#080B14] text-white/60">যাচাই হচ্ছে…</div>;
   }
