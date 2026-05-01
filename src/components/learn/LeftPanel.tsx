@@ -1,10 +1,12 @@
 import { motion } from "framer-motion";
+import { STATE_COLOR, STATE_LABEL_BN, type MasteryState } from "@/lib/masteryEngine";
 
 export type ConceptNode = {
   id: string;
   name: string;
   mastery: number; // 0..1
   emotional: "gold" | "cold-blue" | "fragile";
+  state?: MasteryState;
 };
 
 const SUGGESTED = [
