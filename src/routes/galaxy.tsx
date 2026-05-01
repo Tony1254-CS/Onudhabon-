@@ -66,16 +66,22 @@ function GalaxyPage() {
     return () => { m = false; sub.subscription.unsubscribe(); };
   }, [navigate]);
 
-  // Init Three scene once
+  // Init Three scene only after the authenticated galaxy view is actually mounted.
   useEffect(() => {
-    if (!canvasRef.current || !labelRef.current) return;
+    if (!authed || !canvasRef.current || !labelRef.current || galaxyRef.current) return;
+
     const g = createGalaxy(canvasRef.current, labelRef.current, {
       onHover: setHovered,
       onClick: setSelected,
     });
+
     galaxyRef.current = g;
-    return () => { g.destroy(); galaxyRef.current = null; };
-  }, []);
+
+    return () => {
+      g.destroy();
+      galaxyRef.current = null;
+    };
+  }, [authed]);
 
   // Push stars when ready
   useEffect(() => {
