@@ -16,9 +16,21 @@ export const Route = createFileRoute("/student")({
 type Concept = { id: string; concept: string; subject: string | null; mastery_level: number | null; last_reviewed: string | null; created_at: string };
 type Session = { id: string; topic: string | null; subject: string | null; mastery_score: number | null; cognitive_state: string | null; created_at: string; messages: unknown };
 type Goal = { id: string; topic: string; target_date: string | null; status: string; notes: string | null; created_at: string };
-type Notification = { id: string; type: string; title: string; body: string | null; goal_id: string | null; read_at: string | null; created_at: string };
+type Notification = { id: string; type: string; title: string; body: string | null; goal_id: string | null; intervention_id: string | null; read_at: string | null; created_at: string };
 type PlanStep = { concept: string; title: string; description: string; duration_min: number };
 type Plan = { id: string; title: string; steps: PlanStep[]; status: string; created_at: string };
+type Intervention = {
+  id: string;
+  concept: string;
+  subject: string | null;
+  severity: string;
+  intervention_type: string;
+  suggested_action: string;
+  status: string;
+  student_response: string | null;
+  submitted_at: string | null;
+  assigned_at: string;
+};
 
 const STATE_EMOJI: Record<string, string> = {
   focused: "🎯", confused: "😕", overloaded: "🥵", disengaged: "💤", "mastery-ready": "✨",
@@ -35,6 +47,7 @@ function StudentDashboard() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [interventions, setInterventions] = useState<Intervention[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatingPlan, setGeneratingPlan] = useState(false);
   const [showInbox, setShowInbox] = useState(false);
@@ -65,12 +78,13 @@ function StudentDashboard() {
     let mounted = true;
     (async () => {
       setLoading(true);
-      const [{ data: cn }, { data: ss }, { data: gs }, { data: ns }, { data: pp }] = await Promise.all([
+      const [{ data: cn }, { data: ss }, { data: gs }, { data: ns }, { data: pp }, { data: ivs }] = await Promise.all([
         supabase.from("concept_nodes").select("*").eq("user_id", userId),
         supabase.from("sessions").select("id, topic, subject, mastery_score, cognitive_state, created_at, messages").eq("user_id", userId).order("created_at", { ascending: false }).limit(50),
         supabase.from("learning_goals").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
         supabase.from("notifications").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
         supabase.from("practice_plans").select("*").eq("user_id", userId).eq("status", "active").order("created_at", { ascending: false }).limit(3),
+        supabase.from("interventions").select("id, concept, subject, severity, intervention_type, suggested_action, status, student_response, submitted_at, assigned_at").eq("student_id", userId).order("assigned_at", { ascending: false }).limit(20),
       ]);
       if (!mounted) return;
       setConcepts((cn || []) as Concept[]);
@@ -78,6 +92,7 @@ function StudentDashboard() {
       setGoals((gs || []) as Goal[]);
       setNotifications((ns || []) as Notification[]);
       setPlans(((pp || []) as unknown) as Plan[]);
+      setInterventions((ivs || []) as Intervention[]);
       setLoading(false);
     })();
     return () => { mounted = false; };
@@ -203,6 +218,26 @@ function StudentDashboard() {
   const archivePlan = async (id: string) => {
     setPlans((p) => p.filter((x) => x.id !== id));
     await supabase.from("practice_plans").update({ status: "archived" }).eq("id", id);
+  };
+
+  const submitIntervention = async (iv: Intervention, response: string) => {
+    const now = new Date().toISOString();
+    setInterventions((p) => p.map((x) => (x.id === iv.id ? { ...x, status: "submitted", student_response: response, submitted_at: now } : x)));
+    const { error } = await supabase
+      .from("interventions")
+      .update({ status: "submitted", student_response: response, submitted_at: now })
+      .eq("id", iv.id);
+    if (error) {
+      toast.error("জমা দেওয়া যায়নি");
+      return;
+    }
+    toast.success("শিক্ষককে পাঠানো হয়েছে!");
+  };
+
+  const startIntervention = async (iv: Intervention) => {
+    if (iv.status !== "assigned") return;
+    setInterventions((p) => p.map((x) => (x.id === iv.id ? { ...x, status: "in_progress" } : x)));
+    await supabase.from("interventions").update({ status: "in_progress" }).eq("id", iv.id);
   };
 
   if (!authChecked) {
@@ -377,6 +412,23 @@ function StudentDashboard() {
                 )}
               </Panel>
 
+              <Panel title="শিক্ষকের হস্তক্ষেপ">
+                {interventions.length === 0 ? (
+                  <EmptyState icon={Bell} title="এখনো কোনো হস্তক্ষেপ অ্যাসাইন করা হয়নি।" />
+                ) : (
+                  <ul className="space-y-3">
+                    {interventions.map((iv) => (
+                      <InterventionCard
+                        key={iv.id}
+                        iv={iv}
+                        onStart={startIntervention}
+                        onSubmit={submitIntervention}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </Panel>
+
               <Panel
                 title="অনুশীলন প্ল্যান"
                 action={
@@ -488,6 +540,106 @@ function StudentDashboard() {
         )}
       </main>
     </div>
+  );
+}
+
+function InterventionCard({
+  iv,
+  onStart,
+  onSubmit,
+}: {
+  iv: Intervention;
+  onStart: (iv: Intervention) => void;
+  onSubmit: (iv: Intervention, response: string) => void;
+}) {
+  const [open, setOpen] = useState(iv.status === "assigned" || iv.status === "in_progress");
+  const [response, setResponse] = useState(iv.student_response || "");
+  const sevColor =
+    iv.severity === "critical" ? "#EF4444" :
+    iv.severity === "high" ? "#F59E0B" :
+    iv.severity === "medium" ? "#3B82F6" : "#10B981";
+  const statusLabel: Record<string, string> = {
+    assigned: "নতুন",
+    in_progress: "চলমান",
+    submitted: "জমা দেওয়া হয়েছে",
+    completed: "সম্পন্ন",
+    improved: "উন্নতি হয়েছে",
+    retry: "পুনরায় চেষ্টা",
+  };
+  const isDone = iv.status === "submitted" || iv.status === "completed" || iv.status === "improved";
+
+  return (
+    <li className="rounded-xl border border-white/10 bg-white/[0.02] p-3.5 transition-[box-shadow] hover:shadow-lg">
+      <button onClick={() => setOpen((v) => !v)} className="flex w-full items-start gap-3 text-left">
+        <span
+          className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+          style={{ backgroundColor: `${sevColor}22`, color: sevColor }}
+          aria-hidden
+        >
+          <Bell className="h-3.5 w-3.5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate text-sm font-semibold text-white">{iv.concept}</p>
+            <span
+              className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+              style={{ backgroundColor: `${sevColor}1A`, color: sevColor }}
+            >
+              {statusLabel[iv.status] || iv.status}
+            </span>
+          </div>
+          <p className="mt-1 line-clamp-2 text-xs text-white/60">{iv.suggested_action}</p>
+          <p className="mt-1 text-[10px] text-white/40">
+            {new Date(iv.assigned_at).toLocaleDateString("bn-BD", { day: "numeric", month: "short" })}
+            {iv.subject ? ` · ${iv.subject}` : ""}
+          </p>
+        </div>
+      </button>
+
+      {open && (
+        <div className="mt-3 space-y-2 border-t border-white/5 pt-3">
+          {!isDone ? (
+            <>
+              <label className="block text-[11px] uppercase tracking-wider text-white/50">তোমার উত্তর / কাজ</label>
+              <textarea
+                value={response}
+                onChange={(e) => setResponse(e.target.value)}
+                onFocus={() => onStart(iv)}
+                rows={3}
+                placeholder="তুমি যা শিখেছ বা যে কাজটা করেছ এখানে লেখো…"
+                className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-amber-500/40"
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  to="/learn"
+                  search={{ topic: iv.concept }}
+                  className="flex items-center gap-1 rounded-md bg-blue-500/20 px-3 py-1.5 text-xs font-medium text-blue-200 hover:bg-blue-500/30"
+                >
+                  <BookOpen className="h-3 w-3" /> অনুশীলন করো
+                </Link>
+                <button
+                  onClick={() => onSubmit(iv, response.trim())}
+                  disabled={!response.trim()}
+                  className="flex items-center gap-1 rounded-md bg-emerald-500/25 px-3 py-1.5 text-xs font-semibold text-emerald-200 hover:bg-emerald-500/35 disabled:opacity-40"
+                >
+                  <CheckCircle2 className="h-3 w-3" /> শিক্ষককে জমা দাও
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-[11px] uppercase tracking-wider text-white/50">তোমার জমা দেওয়া উত্তর</p>
+              <p className="rounded-lg bg-white/5 p-2.5 text-sm text-white/80">{iv.student_response || "—"}</p>
+              {iv.submitted_at && (
+                <p className="text-[10px] text-white/40">
+                  জমা: {new Date(iv.submitted_at).toLocaleString("bn-BD")}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </li>
   );
 }
 
