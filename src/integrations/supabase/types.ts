@@ -244,7 +244,9 @@ export type Database = {
           severity: string
           status: string
           student_id: string
+          student_response: string | null
           subject: string | null
+          submitted_at: string | null
           suggested_action: string
           teacher_id: string
           updated_at: string
@@ -265,7 +267,9 @@ export type Database = {
           severity?: string
           status?: string
           student_id: string
+          student_response?: string | null
           subject?: string | null
+          submitted_at?: string | null
           suggested_action: string
           teacher_id: string
           updated_at?: string
@@ -286,7 +290,9 @@ export type Database = {
           severity?: string
           status?: string
           student_id?: string
+          student_response?: string | null
           subject?: string | null
+          submitted_at?: string | null
           suggested_action?: string
           teacher_id?: string
           updated_at?: string
@@ -372,6 +378,7 @@ export type Database = {
           created_at: string
           goal_id: string | null
           id: string
+          intervention_id: string | null
           read_at: string | null
           title: string
           type: string
@@ -382,6 +389,7 @@ export type Database = {
           created_at?: string
           goal_id?: string | null
           id?: string
+          intervention_id?: string | null
           read_at?: string | null
           title: string
           type?: string
@@ -392,12 +400,21 @@ export type Database = {
           created_at?: string
           goal_id?: string | null
           id?: string
+          intervention_id?: string | null
           read_at?: string | null
           title?: string
           type?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notifications_intervention_id_fkey"
+            columns: ["intervention_id"]
+            isOneToOne: false
+            referencedRelation: "interventions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       practice_plans: {
         Row: {
