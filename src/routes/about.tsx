@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { Sparkles, Brain, Code2, Telescope, ArrowRight } from "lucide-react";
+import { Sparkles, Brain, Code2, Telescope, ArrowRight, Check } from "lucide-react";
 import { Navbar } from "@/components/landing/Navbar";
 
 export const Route = createFileRoute("/about")({
