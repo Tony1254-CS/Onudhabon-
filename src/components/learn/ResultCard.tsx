@@ -3,11 +3,12 @@ import { Check, AlertTriangle, ArrowRight } from "lucide-react";
 import type { ExtractedConcept } from "./MindMap";
 
 export function ResultCard({
-  concepts, onContinue,
-}: { concepts: ExtractedConcept[]; onContinue: () => void }) {
+  concepts, onContinue, score: scoreOverride,
+}: { concepts: ExtractedConcept[]; onContinue: () => void; score?: number }) {
   const understood = concepts.filter(c => c.confidence === "strong").map(c => c.name);
   const gaps = concepts.filter(c => c.confidence !== "strong").map(c => c.name);
-  const score = concepts.length === 0 ? 0 : understood.length / concepts.length;
+  const localScore = concepts.length === 0 ? 0 : understood.length / concepts.length;
+  const score = typeof scoreOverride === "number" ? scoreOverride : localScore;
   const r = 36; const c = 2 * Math.PI * r;
 
   return (
