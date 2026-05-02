@@ -198,9 +198,13 @@ function LearnPage() {
       supabase.from("concept_nodes").upsert(decayed, { onConflict: "user_id,subject,concept" });
     }
     if (restored.length) {
-      setConcepts(restored);
+      // Enrich with NCTB curriculum prerequisite edges so the mind map shows
+      // directional dependencies between concepts.
+      const edges = await fetchEdgesForConcepts(restored.map((r) => r.name), t);
+      const enriched = mergeCurriculumPrereqs(restored, edges);
+      setConcepts(enriched);
       // Refresh local cache for offline use
-      await idbPut("concept_nodes", `topic_${t}`, restored);
+      await idbPut("concept_nodes", `topic_${t}`, enriched);
     }
   };
 
