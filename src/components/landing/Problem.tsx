@@ -24,46 +24,46 @@ const cards = [
 
 export function Problem() {
   return (
-    <section className="relative py-32 px-6">
+    <section className="relative py-20 sm:py-32 px-4 sm:px-6">
       <div className="mx-auto max-w-6xl">
         <motion.div
-          initial={{ opacity: 0, y: 30, filter: "blur(8px)" }}
-          whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          viewport={{ once: true, margin: "-100px" }}
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
           transition={{ duration: 0.8, ease: [0.25, 1, 0.5, 1] }}
-          className="text-center mb-20"
+          className="text-center mb-12 sm:mb-20"
         >
           <p className="text-xs uppercase tracking-[0.3em] text-[var(--accent-cold-blue)] mb-4">
             The Problem
           </p>
-          <h2 className="font-display text-4xl md:text-5xl lg:text-6xl tracking-tight text-balance">
+          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl tracking-tight text-balance">
             Bangladesh's Hidden{" "}
             <span className="text-gradient">Learning Crisis</span>
           </h2>
-          <p className="mt-6 text-[var(--text-secondary)] max-w-2xl mx-auto text-lg">
+          <p className="mt-6 text-[var(--text-secondary)] max-w-2xl mx-auto text-base sm:text-lg">
             Three invisible failures, repeated millions of times every day.
           </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-5 sm:gap-6">
           {cards.map((c, i) => (
             <motion.div
               key={c.title}
-              initial={{ opacity: 0, y: 40, clipPath: "inset(100% 0 0 0)" }}
-              whileInView={{ opacity: 1, y: 0, clipPath: "inset(0% 0 0 0)" }}
-              viewport={{ once: true, margin: "-80px" }}
-              transition={{ duration: 0.7, delay: i * 0.15, ease: [0.25, 1, 0.5, 1] }}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.15 }}
+              transition={{ duration: 0.6, delay: i * 0.1, ease: [0.25, 1, 0.5, 1] }}
               whileHover={{ y: -4 }}
-              className="group relative glass rounded-2xl p-8 overflow-hidden hover:border-white/20 transition-colors"
+              className="group relative glass rounded-2xl p-6 sm:p-8 overflow-hidden hover:border-white/20 transition-colors"
             >
               <div
                 className={`absolute -top-20 -right-20 h-48 w-48 rounded-full blur-3xl bg-gradient-to-br ${c.color} opacity-50 group-hover:opacity-100 transition-opacity`}
               />
               <div className="relative">
-                <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-white/[0.04] border border-white/10 mb-6">
+                <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-white/[0.04] border border-white/10 mb-5 sm:mb-6">
                   <c.icon className="h-5 w-5 text-[var(--accent-cold-blue)]" strokeWidth={1.5} />
                 </div>
-                <h3 className="font-display text-2xl mb-3">{c.title}</h3>
+                <h3 className="font-display text-xl sm:text-2xl mb-3">{c.title}</h3>
                 <p className="text-[var(--text-secondary)] leading-relaxed text-[0.95rem]">
                   {c.desc}
                 </p>
