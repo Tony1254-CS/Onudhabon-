@@ -201,6 +201,33 @@ export type Database = {
         }
         Relationships: []
       }
+      concept_relationships: {
+        Row: {
+          concept: string
+          created_at: string
+          id: string
+          prerequisite: string
+          strength: number
+          subject: string
+        }
+        Insert: {
+          concept: string
+          created_at?: string
+          id?: string
+          prerequisite: string
+          strength?: number
+          subject: string
+        }
+        Update: {
+          concept?: string
+          created_at?: string
+          id?: string
+          prerequisite?: string
+          strength?: number
+          subject?: string
+        }
+        Relationships: []
+      }
       demo_cache: {
         Row: {
           cache_key: string
