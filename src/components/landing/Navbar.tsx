@@ -227,6 +227,53 @@ export function Navbar() {
         </div>
       </div>
       {scrolled && <div className="absolute inset-x-0 -bottom-px h-px bg-[var(--border)]" />}
+
+      {/* Mobile drawer */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18 }}
+            className="md:hidden absolute inset-x-0 top-full mx-3 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-[#0c0f1a]/95 p-2 shadow-2xl backdrop-blur-xl"
+          >
+            <nav className="flex flex-col">
+              {(roleLinks ?? []).map((l) => (
+                <Link
+                  key={l.to}
+                  to={l.to}
+                  onClick={() => setMobileOpen(false)}
+                  className="rounded-lg px-3 py-2.5 text-sm text-white/80 hover:bg-white/5 hover:text-white transition-colors"
+                  activeProps={{ className: "bg-white/5 text-white" }}
+                  activeOptions={{ exact: l.to === "/" }}
+                >
+                  {l.label}
+                </Link>
+              ))}
+              {!userId && (
+                <>
+                  <div className="my-1 h-px bg-white/5" />
+                  <Link
+                    to="/demo"
+                    onClick={() => setMobileOpen(false)}
+                    className="rounded-lg px-3 py-2.5 text-sm text-amber-300 hover:bg-amber-400/10 transition-colors"
+                  >
+                    Demo Tour
+                  </Link>
+                  <Link
+                    to="/login"
+                    onClick={() => setMobileOpen(false)}
+                    className="rounded-lg px-3 py-2.5 text-sm text-white/80 hover:bg-white/5 hover:text-white transition-colors font-bangla"
+                  >
+                    লগইন
+                  </Link>
+                </>
+              )}
+            </nav>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.header>
   );
 }
