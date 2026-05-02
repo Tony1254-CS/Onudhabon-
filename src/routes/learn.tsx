@@ -750,7 +750,7 @@ function LearnPage() {
                   )}
 
                   {phase === "result" && (
-                    <ResultCard concepts={concepts} onContinue={() => navigate({ to: "/" })} />
+                    <ResultCard concepts={concepts} score={finalScore ?? undefined} onContinue={() => navigate({ to: "/" })} />
                   )}
                 </div>
               </div>
