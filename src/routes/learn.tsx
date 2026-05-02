@@ -28,6 +28,7 @@ import {
   applyUpdate, fromDb, toDbPatch, propagateGraph,
   type MasteryState, type MasteryNode,
 } from "@/lib/masteryEngine";
+import { fetchEdgesForConcepts, mergeCurriculumPrereqs } from "@/lib/conceptGraph";
 
 // Full column list for round-tripping a concept_node row through the engine.
 const NODE_COLS = "concept, mastery_level, confidence, state, interaction_count, misconception_count, last_reviewed, exposure, understanding, application, retention, explanation_quality, challenge_score, quiz_accuracy, retention_score, hint_dependency, last_retention_check, retention_history, prerequisites";
@@ -197,9 +198,13 @@ function LearnPage() {
       supabase.from("concept_nodes").upsert(decayed, { onConflict: "user_id,subject,concept" });
     }
     if (restored.length) {
-      setConcepts(restored);
+      // Enrich with NCTB curriculum prerequisite edges so the mind map shows
+      // directional dependencies between concepts.
+      const edges = await fetchEdgesForConcepts(restored.map((r) => r.name), t);
+      const enriched = mergeCurriculumPrereqs(restored, edges);
+      setConcepts(enriched);
       // Refresh local cache for offline use
-      await idbPut("concept_nodes", `topic_${t}`, restored);
+      await idbPut("concept_nodes", `topic_${t}`, enriched);
     }
   };
 
