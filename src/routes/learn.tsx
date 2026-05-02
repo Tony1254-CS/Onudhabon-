@@ -534,16 +534,43 @@ function LearnPage() {
     setMessages((prev) => [...prev, promptMsg]);
   };
 
+  const [finalScore, setFinalScore] = useState<number | null>(null);
+
   const finish = async () => {
     setPhase("result");
-    const masteryScore = concepts.length === 0 ? 0 :
-      concepts.filter(c => c.confidence === "strong").length / concepts.length;
+    setFinalScore(null);
+
+    // Persist concepts FIRST so Socratic verdicts land in concept_nodes,
+    // then derive the final score from authoritative mastery_level rows.
+    if (userId && online && topic) {
+      await persistConcepts(topic, concepts, phase === "socratic" ? "explanation" : "discussion");
+    }
+
+    // Fallback score from local 3-band (used offline / pre-DB).
+    const localScore = concepts.length === 0
+      ? 0
+      : concepts.filter((c) => c.confidence === "strong").length / concepts.length;
+
+    let masteryScore = localScore;
+    if (userId && online && topic) {
+      const { data } = await supabase
+        .from("concept_nodes")
+        .select("mastery_level")
+        .eq("user_id", userId)
+        .eq("subject", topic);
+      if (data && data.length) {
+        const avg =
+          data.reduce((s, r: any) => s + (r.mastery_level ?? 0), 0) / data.length;
+        masteryScore = avg;
+      }
+    }
+    setFinalScore(masteryScore);
+
     const sessionRecord = {
       topic, subject: null, cognitive_state: cognitiveState,
       mastery_score: masteryScore, messages, concepts,
       created_at: new Date().toISOString(),
     };
-    // Always cache locally for offline access
     await cacheSession(sessionRecord);
     await idbPut("concept_nodes", `topic_${topic}`, concepts);
     if (userId && online) {
@@ -553,8 +580,6 @@ function LearnPage() {
         mastery_score: masteryScore,
         messages: messages as any,
       });
-      // Final upsert ensures concepts persisted even if extraction calls were dropped
-      await persistConcepts(topic, concepts, phase === "socratic" ? "explanation" : "discussion");
     }
   };
 
@@ -725,7 +750,7 @@ function LearnPage() {
                   )}
 
                   {phase === "result" && (
-                    <ResultCard concepts={concepts} onContinue={() => navigate({ to: "/" })} />
+                    <ResultCard concepts={concepts} score={finalScore ?? undefined} onContinue={() => navigate({ to: "/" })} />
                   )}
                 </div>
               </div>
