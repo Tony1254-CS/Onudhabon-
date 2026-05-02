@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
-import { LogOut, Settings, User as UserIcon, GraduationCap, ChevronDown, Eye } from "lucide-react";
+import { LogOut, Settings, User as UserIcon, GraduationCap, ChevronDown, Eye, Menu, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 type NavLink = { to: string; label: string };
@@ -40,6 +40,7 @@ export function Navbar() {
   const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [open, setOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -109,12 +110,19 @@ export function Navbar() {
       }}
       className="fixed top-0 inset-x-0 z-50 transition-all"
     >
-      <div className="mx-auto max-w-7xl px-6 lg:px-10 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-baseline gap-1.5 group">
-          <span className="font-display text-2xl font-semibold tracking-tight font-bangla">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10 h-16 flex items-center justify-between gap-2">
+        <button
+          aria-label={mobileOpen ? "Close menu" : "Open menu"}
+          onClick={() => setMobileOpen((v) => !v)}
+          className="md:hidden grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/5 text-white/80 hover:bg-white/10 transition-colors"
+        >
+          {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+        </button>
+        <Link to="/" className="flex items-baseline gap-1.5 group mr-auto md:mr-0">
+          <span className="font-display text-xl sm:text-2xl font-semibold tracking-tight font-bangla">
             অনুধাবন
           </span>
-          <span className="text-sm font-bold tracking-widest text-[var(--accent-cold-blue)] group-hover:text-[var(--accent-blue)] transition-colors">
+          <span className="text-xs sm:text-sm font-bold tracking-widest text-[var(--accent-cold-blue)] group-hover:text-[var(--accent-blue)] transition-colors">
             AI
           </span>
         </Link>
@@ -219,6 +227,53 @@ export function Navbar() {
         </div>
       </div>
       {scrolled && <div className="absolute inset-x-0 -bottom-px h-px bg-[var(--border)]" />}
+
+      {/* Mobile drawer */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18 }}
+            className="md:hidden absolute inset-x-0 top-full mx-3 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-[#0c0f1a]/95 p-2 shadow-2xl backdrop-blur-xl"
+          >
+            <nav className="flex flex-col">
+              {(roleLinks ?? []).map((l) => (
+                <Link
+                  key={l.to}
+                  to={l.to}
+                  onClick={() => setMobileOpen(false)}
+                  className="rounded-lg px-3 py-2.5 text-sm text-white/80 hover:bg-white/5 hover:text-white transition-colors"
+                  activeProps={{ className: "bg-white/5 text-white" }}
+                  activeOptions={{ exact: l.to === "/" }}
+                >
+                  {l.label}
+                </Link>
+              ))}
+              {!userId && (
+                <>
+                  <div className="my-1 h-px bg-white/5" />
+                  <Link
+                    to="/demo"
+                    onClick={() => setMobileOpen(false)}
+                    className="rounded-lg px-3 py-2.5 text-sm text-amber-300 hover:bg-amber-400/10 transition-colors"
+                  >
+                    Demo Tour
+                  </Link>
+                  <Link
+                    to="/login"
+                    onClick={() => setMobileOpen(false)}
+                    className="rounded-lg px-3 py-2.5 text-sm text-white/80 hover:bg-white/5 hover:text-white transition-colors font-bangla"
+                  >
+                    লগইন
+                  </Link>
+                </>
+              )}
+            </nav>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.header>
   );
 }
