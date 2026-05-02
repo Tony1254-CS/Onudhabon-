@@ -118,11 +118,11 @@ export function Navbar() {
         >
           {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
         </button>
-        <Link to="/" className="flex items-baseline gap-1.5 group">
-          <span className="font-display text-2xl font-semibold tracking-tight font-bangla">
+        <Link to="/" className="flex items-baseline gap-1.5 group mr-auto md:mr-0">
+          <span className="font-display text-xl sm:text-2xl font-semibold tracking-tight font-bangla">
             অনুধাবন
           </span>
-          <span className="text-sm font-bold tracking-widest text-[var(--accent-cold-blue)] group-hover:text-[var(--accent-blue)] transition-colors">
+          <span className="text-xs sm:text-sm font-bold tracking-widest text-[var(--accent-cold-blue)] group-hover:text-[var(--accent-blue)] transition-colors">
             AI
           </span>
         </Link>
