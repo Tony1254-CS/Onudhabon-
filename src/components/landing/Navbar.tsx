@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
-import { LogOut, Settings, User as UserIcon, GraduationCap, ChevronDown, Eye } from "lucide-react";
+import { LogOut, Settings, User as UserIcon, GraduationCap, ChevronDown, Eye, Menu, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 type NavLink = { to: string; label: string };
