@@ -28,10 +28,22 @@ export const Route = createFileRoute("/")({
 });
 
 function Landing() {
+  const [authed, setAuthed] = useState<boolean | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (mounted) setAuthed(!!session?.user);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setAuthed(!!session?.user);
+    });
+    return () => { mounted = false; sub.subscription.unsubscribe(); };
+  }, []);
+
   return (
     <div className="relative min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
       <ParticleField />
-      <Navbar />
+      {!authed && <Navbar />}
       <main className="relative z-10">
         <Hero />
         <Problem />
