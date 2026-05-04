@@ -175,7 +175,7 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
     }
     const { data } = await supabase
       .from("interventions")
-      .update(patch)
+      .update(patch as never)
       .eq("id", iv.id)
       .select("*")
       .single();
