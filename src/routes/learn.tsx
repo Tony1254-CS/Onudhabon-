@@ -82,7 +82,7 @@ function LearnPage() {
   const [attentionEnabled, setAttentionEnabled] = useState(false);
   const [showConsent, setShowConsent] = useState(false);
   const [attentionStatus, setAttentionStatus] = useState<AttentionStatus>("off");
-  const attentionOverrideRef = useRef<CognitiveState | null>(null);
+  const [attentionOverride, setAttentionOverride] = useState<CognitiveState | null>(null);
 
   const [rightCollapsed, setRightCollapsed] = useState(false);
 
@@ -90,7 +90,7 @@ function LearnPage() {
   const { supported: ttsSupported, speaking, speak, cancel: cancelSpeak, hasBanglaVoice } = useSpeech();
   const [autoSpeak, setAutoSpeak] = useState(false);
   const baseState = useCognitiveState(signals, phase === "socratic" ? "socratic" : "teaching");
-  const cognitiveState: CognitiveState = attentionOverrideRef.current ?? baseState;
+  const cognitiveState: CognitiveState = attentionOverride ?? baseState;
 
   // auth gate
   useEffect(() => {
@@ -117,11 +117,12 @@ function LearnPage() {
 
   // Attention -> cognitive state override
   useEffect(() => {
-    if (!attentionEnabled) { attentionOverrideRef.current = null; return; }
-    if (attentionStatus === "no-face") attentionOverrideRef.current = "disengaged";
-    else if (attentionStatus === "looking-away") attentionOverrideRef.current = "confused";
-    else if (attentionStatus === "focused") attentionOverrideRef.current = "focused";
-    else attentionOverrideRef.current = null;
+    if (!attentionEnabled) { setAttentionOverride(null); return; }
+    if (attentionStatus === "no-face") setAttentionOverride("disengaged");
+    else if (attentionStatus === "looking-away") setAttentionOverride("confused");
+    else if (attentionStatus === "focused") setAttentionOverride("focused");
+    else if (attentionStatus === "stable") setAttentionOverride("focused");
+    else setAttentionOverride(null);
   }, [attentionEnabled, attentionStatus]);
 
   // autoscroll
@@ -592,7 +593,7 @@ function LearnPage() {
       <MasteryBurst />
       <div className="pt-16 h-screen flex">
         <LeftPanel topic={topic} onTopic={startTeaching} nodes={leftNodes} />
-        <MobileLearnDrawers topic={topic} onTopic={startTeaching} nodes={leftNodes} concepts={concepts} cognitiveState={cognitiveState} onDeleteConcept={deleteConcept} online={online} />
+        <MobileLearnDrawers topic={topic} onTopic={startTeaching} nodes={leftNodes} concepts={concepts} cognitiveState={cognitiveState} signals={signals} mode={phase === "socratic" ? "socratic" : "teaching"} onDeleteConcept={deleteConcept} online={online} />
 
         {/* CENTER */}
         <main className="flex-1 flex flex-col min-w-0 relative">
@@ -824,7 +825,7 @@ function LearnPage() {
                   id: "state",
                   label: "State",
                   icon: <Activity className="w-3.5 h-3.5" />,
-                  content: <CognitivePanel state={cognitiveState} />,
+                  content: <CognitivePanel state={cognitiveState} signals={signals} mode={phase === "socratic" ? "socratic" : "teaching"} />,
                 },
               ]}
             />
