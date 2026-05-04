@@ -268,6 +268,7 @@ export type Database = {
           mastery_before: number | null
           notes: string | null
           retention_delta: number | null
+          reviewed_at: string | null
           severity: string
           status: string
           student_id: string
@@ -275,6 +276,7 @@ export type Database = {
           subject: string | null
           submitted_at: string | null
           suggested_action: string
+          teacher_feedback: string | null
           teacher_id: string
           updated_at: string
           weakness_reason: string
@@ -291,6 +293,7 @@ export type Database = {
           mastery_before?: number | null
           notes?: string | null
           retention_delta?: number | null
+          reviewed_at?: string | null
           severity?: string
           status?: string
           student_id: string
@@ -298,6 +301,7 @@ export type Database = {
           subject?: string | null
           submitted_at?: string | null
           suggested_action: string
+          teacher_feedback?: string | null
           teacher_id: string
           updated_at?: string
           weakness_reason: string
@@ -314,6 +318,7 @@ export type Database = {
           mastery_before?: number | null
           notes?: string | null
           retention_delta?: number | null
+          reviewed_at?: string | null
           severity?: string
           status?: string
           student_id?: string
@@ -321,6 +326,7 @@ export type Database = {
           subject?: string | null
           submitted_at?: string | null
           suggested_action?: string
+          teacher_feedback?: string | null
           teacher_id?: string
           updated_at?: string
           weakness_reason?: string
