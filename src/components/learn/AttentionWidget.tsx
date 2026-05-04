@@ -36,10 +36,15 @@ export function AttentionWidget({
   const [minimized, setMinimized] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // History
+  // History + smoothing
   const noFaceSinceRef = useRef<number | null>(null);
   const stableSinceRef = useRef<number | null>(null);
   const awayEventsRef = useRef<number[]>([]);
+  // Ring buffer of recent raw observations for hysteresis
+  const recentRef = useRef<Array<{ face: boolean; away: boolean; offset: number }>>([]);
+  const smoothedOffsetRef = useRef<number>(0);
+  const lastStatusRef = useRef<AttentionStatus>("no-face");
+  const lastChangeAtRef = useRef<number>(0);
 
   useEffect(() => {
     if (!enabled) {
