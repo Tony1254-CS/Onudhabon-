@@ -121,6 +121,39 @@ export function CognitivePanel({
           <span>গভীর</span>
         </div>
       </div>
+
+      {/* TIMELINE — recent state transitions */}
+      <div className="relative rounded-2xl border border-white/10 bg-black/30 p-3">
+        <div className="flex items-center gap-1.5 mb-2">
+          <History className="w-3 h-3 text-white/50" />
+          <p className="text-[10px] uppercase tracking-[0.16em] text-white/50">সাম্প্রতিক পরিবর্তন</p>
+        </div>
+        {metrics.timeline.length === 0 ? (
+          <p className="text-[11px] text-white/40">এখনও কোনো পরিবর্তন রেকর্ড হয়নি।</p>
+        ) : (
+          <ol className="relative space-y-2">
+            <span className="absolute left-[5px] top-1 bottom-1 w-px bg-white/10" />
+            {metrics.timeline.map((t, i) => {
+              const m = STATE_META[t.state];
+              const ago = Math.max(0, Math.round((Date.now() - t.ts) / 1000));
+              const agoLabel = ago < 60 ? `${ago}s` : `${Math.round(ago / 60)}m`;
+              return (
+                <li key={`${t.ts}-${i}`} className="relative pl-5">
+                  <span
+                    className="absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full ring-2 ring-black"
+                    style={{ background: m.color, boxShadow: i === 0 ? `0 0 8px ${m.color}` : "none" }}
+                  />
+                  <div className="flex items-center gap-2 text-[12px]">
+                    <span style={{ color: m.color }} className="font-semibold">{m.icon} {m.label}</span>
+                    <span className="ml-auto text-[10px] text-white/40 tabular-nums">{agoLabel} আগে</span>
+                  </div>
+                  <p className="text-[10.5px] text-white/55 leading-snug">কেন: {t.reason}</p>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+      </div>
     </div>
   );
 }
