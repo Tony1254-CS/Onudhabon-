@@ -169,6 +169,11 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
     return interventions.filter((i) => i.student_id === filterStudent);
   }, [interventions, filterStudent]);
 
+  const submissions = useMemo(() => {
+    const base = filterStudent === "all" ? interventions : interventions.filter((i) => i.student_id === filterStudent);
+    return base.filter((i) => i.status === "submitted" && !!i.student_response);
+  }, [interventions, filterStudent]);
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-2">
