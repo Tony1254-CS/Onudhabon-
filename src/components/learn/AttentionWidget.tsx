@@ -35,6 +35,10 @@ export function AttentionWidget({
   const [status, setStatus] = useState<AttentionStatus>("off");
   const [minimized, setMinimized] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
+  const onSignalRef = useRef(onSignal);
+  const onDisableRef = useRef(onDisable);
+  const inFlightRef = useRef(false);
+  const lastFaceSeenAtRef = useRef<number>(Date.now());
 
   // History + smoothing
   const noFaceSinceRef = useRef<number | null>(null);
@@ -45,6 +49,11 @@ export function AttentionWidget({
   const smoothedOffsetRef = useRef<number>(0);
   const lastStatusRef = useRef<AttentionStatus>("no-face");
   const lastChangeAtRef = useRef<number>(0);
+
+  useEffect(() => {
+    onSignalRef.current = onSignal;
+    onDisableRef.current = onDisable;
+  }, [onDisable, onSignal]);
 
   useEffect(() => {
     if (!enabled) {
@@ -72,34 +81,50 @@ export function AttentionWidget({
         }
         engine = await loadAttentionEngine();
         if (cancelled) return;
-        setStatus("no-face");
+        lastStatusRef.current = "loading";
+        lastChangeAtRef.current = Date.now();
+        recentRef.current = [];
+        awayEventsRef.current = [];
+        noFaceSinceRef.current = null;
+        stableSinceRef.current = null;
+        smoothedOffsetRef.current = 0;
+        lastFaceSeenAtRef.current = Date.now();
 
-        const WINDOW = 7;          // ~5s @ 700ms
-        const MIN_DWELL_MS = 1200; // hysteresis: hold a state at least this long before switching
-        const EMA = 0.35;          // smoothing factor for centerOffset
+        const WINDOW = 10;
+        const MIN_DWELL_MS = 1800;
+        const FACE_LOSS_GRACE_MS = 2200;
+        const EMA = 0.22;
 
         const tick = async () => {
-          if (cancelled || !videoRef.current || !engine) return;
+          if (cancelled || !videoRef.current || !engine || inFlightRef.current) return;
+          inFlightRef.current = true;
           let snap: AttentionSnapshot;
           try {
             snap = await detectAttention(engine, videoRef.current);
-          } catch { snap = { faceDetected: false, lookingAway: false, centerOffset: 1 }; }
+          } catch {
+            snap = { faceDetected: false, lookingAway: false, centerOffset: 1 };
+          } finally {
+            inFlightRef.current = false;
+          }
           const now = Date.now();
+          if (snap.faceDetected) lastFaceSeenAtRef.current = now;
 
-          // Smooth raw signals
           smoothedOffsetRef.current = smoothedOffsetRef.current * (1 - EMA) + snap.centerOffset * EMA;
           recentRef.current.push({ face: snap.faceDetected, away: snap.lookingAway, offset: snap.centerOffset });
           if (recentRef.current.length > WINDOW) recentRef.current.shift();
 
-          // Majority-vote face presence (tolerates a single dropped frame / blink)
           const faceVotes = recentRef.current.filter((r) => r.face).length;
-          const faceMajority = faceVotes >= Math.ceil(recentRef.current.length / 2);
-          // Looking-away requires sustained evidence
+          const faceMajority = faceVotes >= Math.max(1, Math.ceil(recentRef.current.length * 0.6));
+          const faceMissingForMs = now - lastFaceSeenAtRef.current;
+          const faceConfirmedMissing = !faceMajority && faceMissingForMs >= FACE_LOSS_GRACE_MS;
           const awayVotes = recentRef.current.filter((r) => r.face && r.away).length;
-          const awayConfirmed = awayVotes >= 3 || smoothedOffsetRef.current > 0.55;
+          const awayConfirmed = faceMajority && (
+            awayVotes >= Math.max(4, Math.ceil(recentRef.current.length * 0.45)) ||
+            smoothedOffsetRef.current > 0.62
+          );
 
           let candidate: AttentionStatus;
-          if (!faceMajority) {
+          if (faceConfirmedMissing) {
             if (noFaceSinceRef.current === null) noFaceSinceRef.current = now;
             stableSinceRef.current = null;
             candidate = "no-face";
@@ -117,24 +142,23 @@ export function AttentionWidget({
             }
           }
 
-          // Hysteresis: only commit a state change after MIN_DWELL_MS,
-          // unless we're moving within the same "engaged" family (stable↔focused).
           const prev = lastStatusRef.current;
           const sinceChange = now - lastChangeAtRef.current;
           const sameFamily =
             (prev === "stable" && candidate === "focused") ||
             (prev === "focused" && candidate === "stable");
+          const recoveringFromLoss = prev === "no-face" && candidate !== "no-face" && faceVotes >= Math.max(2, Math.ceil(recentRef.current.length * 0.7));
           let next: AttentionStatus = prev;
           if (candidate === prev) {
             next = candidate;
-          } else if (sameFamily || sinceChange >= MIN_DWELL_MS || prev === "no-face" || prev === "loading") {
+          } else if (sameFamily || recoveringFromLoss || sinceChange >= MIN_DWELL_MS || prev === "loading") {
             next = candidate;
             lastChangeAtRef.current = now;
             lastStatusRef.current = candidate;
           }
 
           setStatus(next);
-          onSignal({
+          onSignalRef.current({
             faceMissingFor: noFaceSinceRef.current ? (now - noFaceSinceRef.current) / 1000 : 0,
             awayCount30s: awayEventsRef.current.length,
             status: next,
@@ -146,7 +170,7 @@ export function AttentionWidget({
       } catch (e) {
         console.error("attention init failed:", e);
         setStatus("off");
-        onDisable();
+        onDisableRef.current();
       }
     })();
 
@@ -156,7 +180,7 @@ export function AttentionWidget({
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     };
-  }, [enabled, onDisable, onSignal]);
+  }, [enabled]);
 
   if (!enabled) {
     return (
