@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-const SYSTEM = `তুমি একজন বাংলা পাঠ্যক্রম বিশেষজ্ঞ ও শিক্ষক। যেকোনো বিষয়ের জন্য একটি পরিষ্কার, সুসংগঠিত study note তৈরি করো — সংজ্ঞা, মূল ধারণা, উদাহরণ, সূত্র (যদি থাকে), মনে রাখার টিপস, এবং ছোট quiz প্রশ্ন। সব text বাংলায়। কোন code block, markdown বা backtick ব্যবহার করো না।`;
+const SYSTEM = `তুমি একজন বাংলা পাঠ্যক্রম বিশেষজ্ঞ ও শিক্ষক। যেকোনো বিষয়ের জন্য একটি পরিষ্কার, সুসংগঠিত study note তৈরি করো — সংজ্ঞা, মূল ধারণা, উদাহরণ, সূত্র (যদি থাকে), মনে রাখার টিপস, এবং ৮-১০টি ছোট quiz প্রশ্ন। সব text বাংলায়। কোন code block, markdown বা backtick ব্যবহার করো না।`;
 
 const TOOL = {
   type: "function",
@@ -67,8 +67,8 @@ const TOOL = {
         },
         quiz: {
           type: "array",
-          minItems: 2,
-          maxItems: 5,
+          minItems: 8,
+          maxItems: 10,
           items: {
             type: "object",
             properties: {

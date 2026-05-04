@@ -25,11 +25,15 @@ export function useChatStream() {
     if (opts.useRAG) {
       try {
         const lastUser = [...messages].reverse().find(m => m.role === "user")?.content ?? opts.topic;
+        const ragController = new AbortController();
+        const ragTimeout = window.setTimeout(() => ragController.abort(), 1200);
         const r = await fetch(RAG_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` },
           body: JSON.stringify({ query: lastUser }),
+          signal: ragController.signal,
         });
+        window.clearTimeout(ragTimeout);
         if (r.ok) {
           const j = await r.json();
           ragContext = j.chunks ?? [];

@@ -33,6 +33,44 @@ export type MindMapData = {
 
 type CachedItem<T> = { topic: string; data: T; savedAt: number };
 
+const ensureHttpsUrl = (url?: string) => {
+  if (!url) return "";
+  const value = url.trim();
+  if (!value) return "";
+  if (/^https?:\/\//i.test(value)) return value;
+  if (/^[\w.-]+\.[a-z]{2,}(\/.*)?$/i.test(value)) return `https://${value}`;
+  return "";
+};
+
+const buildSearchUrl = (query: string, scope: "youtube" | "web") => {
+  const q = encodeURIComponent(query.trim());
+  return scope === "youtube"
+    ? `https://www.youtube.com/results?search_query=${q}`
+    : `https://www.google.com/search?q=${q}`;
+};
+
+const sanitizeNotes = (notes: Notes): Notes => ({
+  ...notes,
+  quiz: Array.isArray(notes.quiz) ? notes.quiz.filter((q) => q.question?.trim() && q.answer?.trim()) : [],
+});
+
+const sanitizeResources = (resources: Resources): Resources => ({
+  videos: (resources.videos ?? []).map((video) => ({
+    ...video,
+    url: ensureHttpsUrl(video.url) || buildSearchUrl(`${video.title} ${video.channel ?? ""}`, "youtube"),
+  })),
+  articles: (resources.articles ?? []).map((article) => ({
+    ...article,
+    url: ensureHttpsUrl(article.url) || buildSearchUrl(`${article.title} ${article.source ?? ""}`, "web"),
+  })),
+  practice: (resources.practice ?? []).map((item) => ({
+    ...item,
+    url: ensureHttpsUrl(item.url) || buildSearchUrl(item.title, "web"),
+  })),
+});
+
+const shouldRefreshNotes = (notes: Notes | null) => !notes || notes.quiz.length < 8;
+
 const slug = (t: string) =>
   t.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^\p{L}\p{N}-]/gu, "").slice(0, 80);
 
@@ -75,7 +113,8 @@ export function useTopicNotes(topic: string) {
     (async () => {
       const cached = await idbGet<CachedItem<Notes>>("notes", key);
       if (cancelled) return;
-      if (cached?.data) { setData(cached.data); setFromCache(true); }
+      const cleaned = cached?.data ? sanitizeNotes(cached.data) : null;
+      if (cleaned) { setData(cleaned); setFromCache(true); }
       else { setData(null); setFromCache(false); }
     })();
     return () => { cancelled = true; };
@@ -86,7 +125,8 @@ export function useTopicNotes(topic: string) {
     setError(null);
     if (!force) {
       const cached = await idbGet<CachedItem<Notes>>("notes", key);
-      if (cached?.data) { setData(cached.data); setFromCache(true); return; }
+      const cleaned = cached?.data ? sanitizeNotes(cached.data) : null;
+      if (cleaned && !shouldRefreshNotes(cleaned)) { setData(cleaned); setFromCache(true); return; }
     }
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       setError("offline_no_cache");
@@ -94,14 +134,14 @@ export function useTopicNotes(topic: string) {
     }
     setLoading(true);
     try {
-      const result = await callFn<Notes>("generate-notes", { topic });
+      const result = sanitizeNotes(await callFn<Notes>("generate-notes", { topic }));
       const item: CachedItem<Notes> = { topic, data: result, savedAt: Date.now() };
       await idbPut("notes", key, item);
       setData(result);
       setFromCache(false);
     } catch (e) {
       const cached = await idbGet<CachedItem<Notes>>("notes", key);
-      if (cached?.data) { setData(cached.data); setFromCache(true); }
+      if (cached?.data) { setData(sanitizeNotes(cached.data)); setFromCache(true); }
       else setError(e instanceof Error ? e.message : "failed");
     } finally {
       setLoading(false);
@@ -191,7 +231,7 @@ export function useTopicResourceLinks(topic: string) {
     (async () => {
       const cached = await idbGet<CachedItem<Resources>>("resources", key);
       if (cancelled) return;
-      if (cached?.data) { setData(cached.data); setFromCache(true); }
+      if (cached?.data) { setData(sanitizeResources(cached.data)); setFromCache(true); }
       else { setData(null); setFromCache(false); }
     })();
     return () => { cancelled = true; };
@@ -207,13 +247,13 @@ export function useTopicResourceLinks(topic: string) {
     if (typeof navigator !== "undefined" && !navigator.onLine) { setError("offline_no_cache"); return; }
     setLoading(true);
     try {
-      const result = await callFn<Resources>("generate-resources", { topic });
+      const result = sanitizeResources(await callFn<Resources>("generate-resources", { topic }));
       const item: CachedItem<Resources> = { topic, data: result, savedAt: Date.now() };
       await idbPut("resources", key, item);
       setData(result); setFromCache(false);
     } catch (e) {
       const cached = await idbGet<CachedItem<Resources>>("resources", key);
-      if (cached?.data) { setData(cached.data); setFromCache(true); }
+      if (cached?.data) { setData(sanitizeResources(cached.data)); setFromCache(true); }
       else setError(e instanceof Error ? e.message : "failed");
     } finally { setLoading(false); }
   }, [topic, key]);
