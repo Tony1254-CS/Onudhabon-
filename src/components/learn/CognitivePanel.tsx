@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { Activity, Clock, Gauge, MessageCircle, Sparkles, Wind } from "lucide-react";
+import { Activity, Clock, Gauge, History, MessageCircle, Sparkles, Wind } from "lucide-react";
 import { type CognitiveState, STATE_META, useCognitiveMetrics, type Signal } from "@/hooks/useCognitiveState";
 
 export function CognitivePanel({
