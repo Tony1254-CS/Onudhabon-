@@ -33,6 +33,8 @@ type Intervention = {
   completed_at: string | null;
   followup_at: string | null;
   created_at: string;
+  student_response: string | null;
+  submitted_at: string | null;
 };
 
 type Props = {
