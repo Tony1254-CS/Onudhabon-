@@ -292,8 +292,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
     const body = await req.json();
-    const { messages = [], topic = "", cognitiveState = "focused", ragContext = [] } = body;
-    const system = buildSystemPrompt(topic, cognitiveState, ragContext);
+    const { messages = [], topic = "", cognitiveState = "focused", cognitive = null, ragContext = [] } = body;
+    const cog: Cognitive = cognitive && typeof cognitive === "object" ? cognitive : { state: cognitiveState };
+    if (!cog.state) cog.state = cognitiveState;
+    const system = buildSystemPrompt(topic, cog, ragContext);
 
     const providers = [tryGemini, tryGroq, tryOpenRouter, tryHuggingFace, tryLovableAI];
     for (const p of providers) {
