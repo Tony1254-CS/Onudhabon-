@@ -443,6 +443,12 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
                       </>
                     )}
                   </div>
+                  {iv.student_response && (
+                    <div className="mt-1.5 flex items-start gap-1.5 rounded-md bg-white/5 p-2">
+                      <MessageSquare className="mt-0.5 h-3 w-3 shrink-0 text-white/40" />
+                      <p className="text-xs text-white/75 whitespace-pre-wrap">{iv.student_response}</p>
+                    </div>
+                  )}
                 </li>
               );
             })}
