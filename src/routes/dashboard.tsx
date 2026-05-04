@@ -307,6 +307,19 @@ function DashboardPage() {
           </section>
         )}
       </main>
+      {reviewTarget && teacherId && (
+        <QuickReviewModal
+          open={!!reviewTarget}
+          onClose={() => setReviewTarget(null)}
+          studentId={reviewTarget.studentId}
+          studentName={reviewTarget.studentName}
+          conceptId={reviewTarget.conceptId}
+          concept={reviewTarget.concept}
+          teacherId={teacherId}
+          nodes={nodes as ConceptInput[]}
+          sessions={sessions as SessionInput[]}
+        />
+      )}
     </div>
   );
 }
