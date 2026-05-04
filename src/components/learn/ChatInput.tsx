@@ -1,14 +1,19 @@
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Mic, MicOff, ImageIcon, Send, X, Loader2 } from "lucide-react";
+import { Mic, MicOff, ImageIcon, Send, X, Loader2, Paperclip, FileText } from "lucide-react";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
+import { toast } from "sonner";
+
+type AttachedFile = { name: string; size: number; content: string };
 
 export function ChatInput({
   onSend, disabled, placeholder, voiceDisabled, voiceDisabledMessage,
 }: { onSend: (text: string, image?: string) => void; disabled?: boolean; placeholder?: string; voiceDisabled?: boolean; voiceDisabledMessage?: string }) {
   const [text, setText] = useState("");
   const [image, setImage] = useState<string | null>(null);
+  const [file, setFile] = useState<AttachedFile | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const docRef = useRef<HTMLInputElement>(null);
   const longPressTimer = useRef<number | null>(null);
   const wasLongPress = useRef(false);
 
@@ -22,7 +27,28 @@ export function ChatInput({
     const r = new FileReader();
     r.onload = () => setImage(r.result as string);
     r.readAsDataURL(f);
+    e.target.value = "";
   };
+
+  const onPickDoc = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    e.target.value = "";
+    if (f.size > 2 * 1024 * 1024) {
+      toast.error("ফাইলটি খুব বড় (সর্বোচ্চ ২ MB)");
+      return;
+    }
+    try {
+      const content = await f.text();
+      // Trim very long pastes for the LLM context window.
+      const trimmed = content.length > 12000 ? content.slice(0, 12000) + "\n…(truncated)" : content;
+      setFile({ name: f.name, size: f.size, content: trimmed });
+      toast.success(`${f.name} যোগ করা হয়েছে`);
+    } catch {
+      toast.error("ফাইল পড়া যায়নি — শুধু টেক্সট ফাইল সমর্থিত");
+    }
+  };
+
 
   const submit = () => {
     if (!text.trim() && !image) return;
