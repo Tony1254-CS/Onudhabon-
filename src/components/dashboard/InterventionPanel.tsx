@@ -87,7 +87,20 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
       setInterventions((ivs || []) as Intervention[]);
       setMisconceptions((ms || []) as MisconceptionRecord[]);
     })();
-    return () => { mounted = false; };
+    const channel = supabase
+      .channel("interventions-teacher")
+      .on("postgres_changes", { event: "*", schema: "public", table: "interventions" }, (payload) => {
+        const row = (payload.new || payload.old) as Intervention;
+        if (!row) return;
+        setInterventions((prev) => {
+          if (payload.eventType === "DELETE") return prev.filter((p) => p.id !== row.id);
+          const exists = prev.some((p) => p.id === row.id);
+          if (exists) return prev.map((p) => (p.id === row.id ? (payload.new as Intervention) : p));
+          return [payload.new as Intervention, ...prev];
+        });
+      })
+      .subscribe();
+    return () => { mounted = false; supabase.removeChannel(channel); };
   }, []);
 
   // Build weakness analyses for the selected (or all) student(s)
