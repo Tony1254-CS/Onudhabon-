@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { Sparkles, Brain, Code2, Telescope, ArrowRight, Check } from "lucide-react";
+import { Sparkles, Brain, Code2, Telescope, ArrowRight, Check, Mic, Network, Gauge, Languages, WifiOff, Eye, Camera, Workflow, GraduationCap, MessageSquare } from "lucide-react";
 import { Navbar } from "@/components/landing/Navbar";
 
 export const Route = createFileRoute("/about")({
@@ -198,6 +198,52 @@ function AboutPage() {
             <p className="mt-8 text-center font-bangla text-xs text-white/50">
               Curriculum-agnostic engine — NCTB সরিয়ে যেকোনো দেশের পাঠ্যক্রম যুক্ত করুন
             </p>
+          </div>
+        </motion.section>
+
+        {/* What we built — full feature index */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+          className="mt-12"
+        >
+          <h2 className="mb-2 text-2xl font-semibold font-bangla">আমরা যা বানিয়েছি</h2>
+          <p className="mb-6 text-sm text-white/50 font-bangla">প্রতিটি ফিচার — একটি সম্পূর্ণ কগনিটিভ লার্নিং সিস্টেম।</p>
+          <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.04] to-white/[0.01] p-6 sm:p-8 backdrop-blur-xl"
+            style={{ boxShadow: "0 30px 80px -40px rgba(96,165,250,0.35)" }}
+          >
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[
+                { icon: Mic, title: "Socratic Teach-Back", desc: "ছাত্র AI-কে শেখায় বাংলায়; সিস্টেম গভীরতা পরিমাপ করে।", color: "#60A5FA" },
+                { icon: Network, title: "Live Mind Map", desc: "প্রতিটি বাক্য থেকে রিয়েল-টাইম concept graph তৈরি হয়।", color: "#A78BFA" },
+                { icon: Gauge, title: "Cognitive State Engine", desc: "Flow / Focused / Overloaded — ৭টি state, hysteresis সহ।", color: "#F59E0B" },
+                { icon: Eye, title: "Attention Tracking", desc: "face-api.js দিয়ে on-device মনোযোগ সংকেত — কোনো ভিডিও সংরক্ষণ নয়।", color: "#34D399" },
+                { icon: Telescope, title: "Knowledge Galaxy", desc: "3D তারা-মানচিত্র — প্রতিটি mastered ধারণা একটি নক্ষত্র।", color: "#FB923C" },
+                { icon: Brain, title: "Mastery Engine", desc: "Exposure → Developing → Practiced → Mastered, retention সহ।", color: "#F472B6" },
+                { icon: GraduationCap, title: "Teacher Dashboard", desc: "দুর্বলতা heatmap, intervention assignment, classroom view।", color: "#60A5FA" },
+                { icon: Workflow, title: "Intervention Loop", desc: "Quick Review → ছাত্রের কাছে notification → submission → feedback।", color: "#A78BFA" },
+                { icon: MessageSquare, title: "Multi-provider RAG", desc: "Gemini → Groq → OpenRouter failover, NCTB curriculum সহ।", color: "#F59E0B" },
+                { icon: Camera, title: "Voice + Image + File", desc: "Web Speech, Whisper push-to-talk, ছবি ও ফাইল আপলোড।", color: "#34D399" },
+                { icon: Languages, title: "Bangla-First", desc: "সম্পূর্ণ বাংলা UI, voice ও TTS — বাংলাদেশি ছাত্রের জন্য।", color: "#FB923C" },
+                { icon: WifiOff, title: "Offline Capsule + PWA", desc: "ক্যাপসুল ডাউনলোড করে নেট ছাড়াই শেখা, পরে sync।", color: "#F472B6" },
+              ].map((f, i) => (
+                <motion.div
+                  key={f.title}
+                  initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: (i % 3) * 0.05 + Math.floor(i / 3) * 0.08 }}
+                  whileHover={{ y: -3 }}
+                  className="group relative rounded-2xl border border-white/10 bg-white/[0.02] p-5 transition-all hover:border-white/20"
+                  style={{ boxShadow: `0 10px 30px -20px ${f.color}40` }}
+                >
+                  <div
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border"
+                    style={{ borderColor: `${f.color}40`, background: `${f.color}10`, boxShadow: `0 0 20px -8px ${f.color}` }}
+                  >
+                    <f.icon className="h-5 w-5" style={{ color: f.color }} strokeWidth={1.6} />
+                  </div>
+                  <h3 className="mt-4 text-base font-semibold text-white">{f.title}</h3>
+                  <p className="mt-1 text-xs leading-relaxed text-white/55 font-bangla">{f.desc}</p>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </motion.section>
 

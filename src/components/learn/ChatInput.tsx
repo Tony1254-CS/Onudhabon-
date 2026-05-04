@@ -1,14 +1,19 @@
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Mic, MicOff, ImageIcon, Send, X, Loader2 } from "lucide-react";
+import { Mic, MicOff, ImageIcon, Send, X, Loader2, Paperclip, FileText } from "lucide-react";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
+import { toast } from "sonner";
+
+type AttachedFile = { name: string; size: number; content: string };
 
 export function ChatInput({
   onSend, disabled, placeholder, voiceDisabled, voiceDisabledMessage,
 }: { onSend: (text: string, image?: string) => void; disabled?: boolean; placeholder?: string; voiceDisabled?: boolean; voiceDisabledMessage?: string }) {
   const [text, setText] = useState("");
   const [image, setImage] = useState<string | null>(null);
+  const [file, setFile] = useState<AttachedFile | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const docRef = useRef<HTMLInputElement>(null);
   const longPressTimer = useRef<number | null>(null);
   const wasLongPress = useRef(false);
 
@@ -22,14 +27,41 @@ export function ChatInput({
     const r = new FileReader();
     r.onload = () => setImage(r.result as string);
     r.readAsDataURL(f);
+    e.target.value = "";
   };
 
+  const onPickDoc = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    e.target.value = "";
+    if (f.size > 2 * 1024 * 1024) {
+      toast.error("ফাইলটি খুব বড় (সর্বোচ্চ ২ MB)");
+      return;
+    }
+    try {
+      const content = await f.text();
+      // Trim very long pastes for the LLM context window.
+      const trimmed = content.length > 12000 ? content.slice(0, 12000) + "\n…(truncated)" : content;
+      setFile({ name: f.name, size: f.size, content: trimmed });
+      toast.success(`${f.name} যোগ করা হয়েছে`);
+    } catch {
+      toast.error("ফাইল পড়া যায়নি — শুধু টেক্সট ফাইল সমর্থিত");
+    }
+  };
+
+
   const submit = () => {
-    if (!text.trim() && !image) return;
-    onSend(text.trim(), image ?? undefined);
+    if (!text.trim() && !image && !file) return;
+    let body = text.trim();
+    if (file) {
+      body = `${body ? body + "\n\n" : ""}📎 সংযুক্ত ফাইল: ${file.name}\n\n\`\`\`\n${file.content}\n\`\`\``;
+    }
+    onSend(body, image ?? undefined);
     setText("");
     setImage(null);
+    setFile(null);
   };
+
 
   const onMicDown = () => {
     if (voiceDisabled || transcribing) return;
@@ -75,13 +107,27 @@ export function ChatInput({
 
   return (
     <div className="border-t border-[var(--border)] bg-[var(--bg-secondary)]/60 backdrop-blur-xl p-4">
-      {image && (
-        <div className="mb-3 inline-flex items-center gap-2 p-2 pr-3 rounded-lg bg-white/[0.04] border border-[var(--border)]">
-          <img src={image} alt="" className="w-10 h-10 rounded object-cover" />
-          <span className="text-xs text-[var(--text-secondary)]">ছবি যোগ করা হয়েছে</span>
-          <button onClick={() => setImage(null)} className="text-[var(--text-secondary)] hover:text-white">
-            <X className="w-3.5 h-3.5" />
-          </button>
+      {(image || file) && (
+        <div className="mb-3 flex flex-wrap gap-2">
+          {image && (
+            <div className="inline-flex items-center gap-2 p-2 pr-3 rounded-lg bg-white/[0.04] border border-[var(--border)]">
+              <img src={image} alt="" className="w-10 h-10 rounded object-cover" />
+              <span className="text-xs text-[var(--text-secondary)]">ছবি যোগ করা হয়েছে</span>
+              <button onClick={() => setImage(null)} className="text-[var(--text-secondary)] hover:text-white">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+          {file && (
+            <div className="inline-flex items-center gap-2 p-2 pr-3 rounded-lg bg-white/[0.04] border border-[var(--border)]">
+              <FileText className="w-4 h-4 text-[var(--accent-cold-blue)]" />
+              <span className="text-xs text-[var(--text-secondary)] max-w-[180px] truncate">{file.name}</span>
+              <span className="text-[10px] text-[var(--text-secondary)]/60">{(file.size / 1024).toFixed(0)} KB</span>
+              <button onClick={() => setFile(null)} className="text-[var(--text-secondary)] hover:text-white">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
       )}
       <div className="flex items-end gap-2">
@@ -93,6 +139,23 @@ export function ChatInput({
           <ImageIcon className="w-4 h-4" />
         </button>
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={onPickImage} />
+
+        <button
+          onClick={() => docRef.current?.click()}
+          className="shrink-0 p-2.5 rounded-xl border border-[var(--border)] hover:border-white/20 hover:bg-white/[0.04] text-[var(--text-secondary)] transition-all"
+          title="ফাইল আপলোড (.txt, .md, .csv, .json, .pdf-text)"
+        >
+          <Paperclip className="w-4 h-4" />
+        </button>
+        <input
+          ref={docRef}
+          type="file"
+          accept=".txt,.md,.markdown,.csv,.json,.log,.html,.xml,.yaml,.yml,text/*"
+          className="hidden"
+          onChange={onPickDoc}
+        />
+
+
 
         <textarea
           value={text}
@@ -129,7 +192,7 @@ export function ChatInput({
 
         <button
           onClick={submit}
-          disabled={disabled || (!text.trim() && !image)}
+          disabled={disabled || (!text.trim() && !image && !file)}
           className="shrink-0 p-2.5 rounded-xl bg-[var(--accent-blue)] hover:bg-[var(--accent-cold-blue)] text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           style={{ boxShadow: "0 0 20px rgba(59,130,246,0.35)" }}
         >

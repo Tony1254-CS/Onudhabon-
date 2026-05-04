@@ -104,7 +104,7 @@ export function AttentionWidget({
         };
 
         await tick();
-        interval = setInterval(tick, 3000);
+        interval = setInterval(tick, 700);
       } catch (e) {
         console.error("attention init failed:", e);
         setStatus("off");
