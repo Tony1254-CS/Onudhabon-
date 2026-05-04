@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { ParticleField } from "@/components/landing/ParticleField";
 import { Navbar } from "@/components/landing/Navbar";
 import { Hero } from "@/components/landing/Hero";
@@ -8,6 +9,7 @@ import { Features } from "@/components/landing/Features";
 import { DemoFlow } from "@/components/landing/DemoFlow";
 import { CTA } from "@/components/landing/CTA";
 import { Footer } from "@/components/landing/Footer";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   head: () => ({
