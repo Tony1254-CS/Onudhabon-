@@ -18,7 +18,7 @@ import { ResourcesPanel } from "@/components/learn/ResourcesPanel";
 import { MasteryBurst } from "@/components/learn/MasteryBurst";
 import { AttentionWidget, AttentionConsentModal, type AttentionStatus } from "@/components/learn/AttentionWidget";
 import { useChatStream, type ChatMsg } from "@/hooks/useChatStream";
-import { useCognitiveState, type Signal, type CognitiveState } from "@/hooks/useCognitiveState";
+import { useCognitiveState, useCognitiveMetrics, type Signal, type CognitiveState } from "@/hooks/useCognitiveState";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useSpeech } from "@/hooks/useSpeech";
 import { Volume2, VolumeX, Brain, BookOpen, Activity, Trophy, ExternalLink, ChevronRight, PanelRightClose } from "lucide-react";
@@ -89,7 +89,8 @@ function LearnPage() {
   const { send, streaming, provider } = useChatStream();
   const { supported: ttsSupported, speaking, speak, cancel: cancelSpeak, hasBanglaVoice } = useSpeech();
   const [autoSpeak, setAutoSpeak] = useState(false);
-  const baseState = useCognitiveState(signals, phase === "socratic" ? "socratic" : "teaching");
+  const cognitiveMetrics = useCognitiveMetrics(signals, phase === "socratic" ? "socratic" : "teaching");
+  const baseState = cognitiveMetrics.state;
   const cognitiveState: CognitiveState = attentionOverride ?? baseState;
 
   // auth gate
@@ -458,7 +459,20 @@ function LearnPage() {
   ) => {
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
     let acc = "";
-    send(history, { topic: topicVal, cognitiveState: state, useRAG }, (delta) => {
+    send(history, {
+      topic: topicVal,
+      cognitiveState: state,
+      cognitive: {
+        state,
+        flowScore: cognitiveMetrics.flowScore,
+        focusMinutes: cognitiveMetrics.focusMinutes,
+        cadenceSec: cognitiveMetrics.cadenceSec,
+        avgResponseLength: cognitiveMetrics.avgResponseLength,
+        idleSec: cognitiveMetrics.idleSec,
+        reason: cognitiveMetrics.reason,
+      },
+      useRAG,
+    }, (delta) => {
       acc += delta;
       setMessages((prev) => {
         const next = [...prev];
