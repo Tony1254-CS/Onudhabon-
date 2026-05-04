@@ -18,7 +18,7 @@ import { ResourcesPanel } from "@/components/learn/ResourcesPanel";
 import { MasteryBurst } from "@/components/learn/MasteryBurst";
 import { AttentionWidget, AttentionConsentModal, type AttentionStatus } from "@/components/learn/AttentionWidget";
 import { useChatStream, type ChatMsg } from "@/hooks/useChatStream";
-import { useCognitiveState, useCognitiveMetrics, type Signal, type CognitiveState } from "@/hooks/useCognitiveState";
+import { useCognitiveMetrics, type Signal, type CognitiveState } from "@/hooks/useCognitiveState";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useSpeech } from "@/hooks/useSpeech";
 import { Volume2, VolumeX, Brain, BookOpen, Activity, Trophy, ExternalLink, ChevronRight, PanelRightClose } from "lucide-react";
