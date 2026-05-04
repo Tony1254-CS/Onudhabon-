@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertTriangle, ArrowRight, BookOpen, ChevronDown, ChevronUp, Clock, Sparkles, TrendingDown, TrendingUp, Minus, CheckCircle2, RotateCcw } from "lucide-react";
+import { AlertTriangle, ArrowRight, BookOpen, ChevronDown, ChevronUp, Clock, Sparkles, TrendingDown, TrendingUp, Minus, CheckCircle2, RotateCcw, Inbox, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   analyzeWeakness,
