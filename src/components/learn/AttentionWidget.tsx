@@ -36,10 +36,15 @@ export function AttentionWidget({
   const [minimized, setMinimized] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // History
+  // History + smoothing
   const noFaceSinceRef = useRef<number | null>(null);
   const stableSinceRef = useRef<number | null>(null);
   const awayEventsRef = useRef<number[]>([]);
+  // Ring buffer of recent raw observations for hysteresis
+  const recentRef = useRef<Array<{ face: boolean; away: boolean; offset: number }>>([]);
+  const smoothedOffsetRef = useRef<number>(0);
+  const lastStatusRef = useRef<AttentionStatus>("no-face");
+  const lastChangeAtRef = useRef<number>(0);
 
   useEffect(() => {
     if (!enabled) {
@@ -69,6 +74,10 @@ export function AttentionWidget({
         if (cancelled) return;
         setStatus("no-face");
 
+        const WINDOW = 7;          // ~5s @ 700ms
+        const MIN_DWELL_MS = 1200; // hysteresis: hold a state at least this long before switching
+        const EMA = 0.35;          // smoothing factor for centerOffset
+
         const tick = async () => {
           if (cancelled || !videoRef.current || !engine) return;
           let snap: AttentionSnapshot;
@@ -76,25 +85,54 @@ export function AttentionWidget({
             snap = await detectAttention(engine, videoRef.current);
           } catch { snap = { faceDetected: false, lookingAway: false, centerOffset: 1 }; }
           const now = Date.now();
-          let next: AttentionStatus = "no-face";
 
-          if (!snap.faceDetected) {
+          // Smooth raw signals
+          smoothedOffsetRef.current = smoothedOffsetRef.current * (1 - EMA) + snap.centerOffset * EMA;
+          recentRef.current.push({ face: snap.faceDetected, away: snap.lookingAway, offset: snap.centerOffset });
+          if (recentRef.current.length > WINDOW) recentRef.current.shift();
+
+          // Majority-vote face presence (tolerates a single dropped frame / blink)
+          const faceVotes = recentRef.current.filter((r) => r.face).length;
+          const faceMajority = faceVotes >= Math.ceil(recentRef.current.length / 2);
+          // Looking-away requires sustained evidence
+          const awayVotes = recentRef.current.filter((r) => r.face && r.away).length;
+          const awayConfirmed = awayVotes >= 3 || smoothedOffsetRef.current > 0.55;
+
+          let candidate: AttentionStatus;
+          if (!faceMajority) {
             if (noFaceSinceRef.current === null) noFaceSinceRef.current = now;
             stableSinceRef.current = null;
-            next = "no-face";
+            candidate = "no-face";
           } else {
             noFaceSinceRef.current = null;
-            if (snap.lookingAway) {
+            if (awayConfirmed) {
               awayEventsRef.current.push(now);
               awayEventsRef.current = awayEventsRef.current.filter((t) => now - t < 30000);
               stableSinceRef.current = null;
-              next = "looking-away";
+              candidate = "looking-away";
             } else {
               if (stableSinceRef.current === null) stableSinceRef.current = now;
               const stableFor = (now - stableSinceRef.current) / 1000;
-              next = stableFor >= 10 ? "focused" : "stable";
+              candidate = stableFor >= 8 ? "focused" : "stable";
             }
           }
+
+          // Hysteresis: only commit a state change after MIN_DWELL_MS,
+          // unless we're moving within the same "engaged" family (stable↔focused).
+          const prev = lastStatusRef.current;
+          const sinceChange = now - lastChangeAtRef.current;
+          const sameFamily =
+            (prev === "stable" && candidate === "focused") ||
+            (prev === "focused" && candidate === "stable");
+          let next: AttentionStatus = prev;
+          if (candidate === prev) {
+            next = candidate;
+          } else if (sameFamily || sinceChange >= MIN_DWELL_MS || prev === "no-face" || prev === "loading") {
+            next = candidate;
+            lastChangeAtRef.current = now;
+            lastStatusRef.current = candidate;
+          }
+
           setStatus(next);
           onSignal({
             faceMissingFor: noFaceSinceRef.current ? (now - noFaceSinceRef.current) / 1000 : 0,
