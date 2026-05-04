@@ -7,16 +7,18 @@ import { CognitivePanel } from "@/components/learn/CognitivePanel";
 import { NotesPanel } from "@/components/learn/NotesPanel";
 import { QuizPanel } from "@/components/learn/QuizPanel";
 import { ResourcesPanel } from "@/components/learn/ResourcesPanel";
-import type { CognitiveState } from "@/hooks/useCognitiveState";
+import type { CognitiveState, Signal } from "@/hooks/useCognitiveState";
 
 export function MobileLearnDrawers({
-  topic, onTopic, nodes, concepts, cognitiveState, onDeleteConcept, online = true,
+  topic, onTopic, nodes, concepts, cognitiveState, signals, mode, onDeleteConcept, online = true,
 }: {
   topic: string;
   onTopic: (t: string) => void;
   nodes: ConceptNode[];
   concepts: ExtractedConcept[];
   cognitiveState: CognitiveState;
+  signals?: Signal[];
+  mode?: "teaching" | "socratic";
   onDeleteConcept?: (name: string) => void;
   online?: boolean;
 }) {
