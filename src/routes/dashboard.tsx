@@ -290,7 +290,7 @@ function DashboardPage() {
         )}
 
         {!loading && teacherId && (
-          <section className="mt-6">
+          <section id="intervention-panel" className="mt-6">
             <Panel title="হস্তক্ষেপ ও দুর্বলতা বিশ্লেষণ" pulse={false}>
               <InterventionPanel
                 students={students.map((s) => ({ id: s.id, full_name: s.full_name }))}
