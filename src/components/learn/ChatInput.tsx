@@ -192,7 +192,7 @@ export function ChatInput({
 
         <button
           onClick={submit}
-          disabled={disabled || (!text.trim() && !image)}
+          disabled={disabled || (!text.trim() && !image && !file)}
           className="shrink-0 p-2.5 rounded-xl bg-[var(--accent-blue)] hover:bg-[var(--accent-cold-blue)] text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           style={{ boxShadow: "0 0 20px rgba(59,130,246,0.35)" }}
         >
