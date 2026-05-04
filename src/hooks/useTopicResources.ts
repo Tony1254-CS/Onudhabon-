@@ -33,20 +33,63 @@ export type MindMapData = {
 
 type CachedItem<T> = { topic: string; data: T; savedAt: number };
 
+// Tries to coerce a string into a usable https URL. Returns "" if the input is
+// nonsense, a placeholder ("example.com", "TBD", "http://"), or otherwise unsafe.
 const ensureHttpsUrl = (url?: string) => {
   if (!url) return "";
-  const value = url.trim();
+  let value = url.trim();
   if (!value) return "";
-  if (/^https?:\/\//i.test(value)) return value;
-  if (/^[\w.-]+\.[a-z]{2,}(\/.*)?$/i.test(value)) return `https://${value}`;
-  return "";
+  // Strip wrapping markdown / quotes that LLMs sometimes emit.
+  value = value.replace(/^[<("']+|[>)"']+$/g, "");
+  if (!/^https?:\/\//i.test(value)) {
+    if (/^[\w.-]+\.[a-z]{2,}(\/.*)?$/i.test(value)) value = `https://${value}`;
+    else return "";
+  }
+  try {
+    const u = new URL(value);
+    u.protocol = "https:";
+    const host = u.hostname.toLowerCase();
+    // Reject placeholder / unreachable hosts.
+    if (!host.includes(".")) return "";
+    if (/(^|\.)(example|test|localhost|invalid|placeholder)\./.test(`${host}.`)) return "";
+    if (host === "example.com" || host === "your-link.com") return "";
+    return u.toString();
+  } catch {
+    return "";
+  }
+};
+
+// Stricter check for real YouTube watchable URLs (watch?v= / youtu.be / shorts / embed).
+const isValidYouTubeUrl = (url: string) => {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, "");
+    if (host === "youtu.be") return /^\/[\w-]{6,}/.test(u.pathname);
+    if (host === "youtube.com" || host === "m.youtube.com") {
+      if (u.pathname === "/watch" && u.searchParams.get("v")) return true;
+      if (/^\/(shorts|embed|live)\/[\w-]{6,}/.test(u.pathname)) return true;
+    }
+    return false;
+  } catch { return false; }
 };
 
 const buildSearchUrl = (query: string, scope: "youtube" | "web") => {
-  const q = encodeURIComponent(query.trim());
+  const q = encodeURIComponent(query.trim().slice(0, 120));
   return scope === "youtube"
     ? `https://www.youtube.com/results?search_query=${q}`
     : `https://www.google.com/search?q=${q}`;
+};
+
+// Resolve any candidate URL into something that will actually open. For videos
+// we additionally require a recognizable YouTube watchable URL; otherwise we
+// fall back to a YouTube search for the title.
+const resolveLink = (raw: string | undefined, fallbackQuery: string, scope: "youtube" | "web") => {
+  const cleaned = ensureHttpsUrl(raw);
+  if (scope === "youtube") {
+    if (cleaned && isValidYouTubeUrl(cleaned)) return cleaned;
+    return buildSearchUrl(fallbackQuery, "youtube");
+  }
+  return cleaned || buildSearchUrl(fallbackQuery, "web");
 };
 
 const sanitizeNotes = (notes: Notes): Notes => ({
@@ -57,15 +100,15 @@ const sanitizeNotes = (notes: Notes): Notes => ({
 const sanitizeResources = (resources: Resources): Resources => ({
   videos: (resources.videos ?? []).map((video) => ({
     ...video,
-    url: ensureHttpsUrl(video.url) || buildSearchUrl(`${video.title} ${video.channel ?? ""}`, "youtube"),
+    url: resolveLink(video.url, `${video.title} ${video.channel ?? ""}`, "youtube"),
   })),
   articles: (resources.articles ?? []).map((article) => ({
     ...article,
-    url: ensureHttpsUrl(article.url) || buildSearchUrl(`${article.title} ${article.source ?? ""}`, "web"),
+    url: resolveLink(article.url, `${article.title} ${article.source ?? ""}`, "web"),
   })),
   practice: (resources.practice ?? []).map((item) => ({
     ...item,
-    url: ensureHttpsUrl(item.url) || buildSearchUrl(item.title, "web"),
+    url: resolveLink(item.url, item.title, "web"),
   })),
 });
 

@@ -12,11 +12,78 @@ const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
 const TIMEOUT_MS = 8000;
 
-function buildSystemPrompt(topic: string, cognitiveState: string, ragContext: string[]) {
+type Cognitive = {
+  state?: string;
+  flowScore?: number;
+  focusMinutes?: number;
+  cadenceSec?: number;
+  avgResponseLength?: number;
+  idleSec?: number;
+  reason?: string;
+};
+
+// Translate the live cognitive metrics into a concrete pedagogical contract.
+// This is the heart of "cognitive-state-aware" answers — the LLM receives an
+// explicit plan (length, tone, scaffolding, next move) instead of a vague label.
+function cognitiveDirective(c: Cognitive): { directive: string; budget: string } {
+  const s = (c.state || "focused").toLowerCase();
+  const flow = Math.round(c.flowScore ?? 50);
+  const idle = Math.round(c.idleSec ?? 0);
+  const cad = Math.round(c.cadenceSec ?? 0);
+  const avg = Math.round(c.avgResponseLength ?? 0);
+  const focusMin = Math.round(c.focusMinutes ?? 0);
+
+  // Per-state plan: depth, tone, structure, ending move.
+  const plans: Record<string, { plan: string; budget: string }> = {
+    flow: {
+      plan: "Student is in flow (deep focus). Match their depth: give 1 rich, layered explanation with a non-trivial follow-up that pushes one level deeper. Do not interrupt momentum with hand-holding or summaries. End with ONE challenging 'why/how' question.",
+      budget: "120-180 words, 1 short paragraph + 1 question. No bullet lists.",
+    },
+    focused: {
+      plan: "Student is steadily focused. Build understanding cleanly with a clear 2-3 step structure and one connecting example. End with a small probe to deepen.",
+      budget: "100-140 words. At most 3 short bullets if structure helps. End with 1 question.",
+    },
+    "mastery-ready": {
+      plan: "Student is close to mastery. Skip basics. Pose an applied scenario or edge case, then ask them to predict before you confirm. Confirm crisply with the underlying principle.",
+      budget: "80-120 words. Lead with the scenario, end with 'তুমি কী মনে করো — কেন?'.",
+    },
+    exploring: {
+      plan: "Student is exploring shallowly. Open with one vivid anchor (analogy or concrete example), then invite them to pick which thread to pull. Avoid dumping a full lecture.",
+      budget: "70-110 words. End with 2 small choices ('A বা B — কোনটা আগে দেখব?').",
+    },
+    confused: {
+      plan: "Student is stuck (long gaps, lost thread). DO NOT add new content. Step back: restate the last idea in the simplest possible words, check ONE specific sub-step with a yes/no or fill-in question. Be warm.",
+      budget: "60-90 words. Plain prose. End with one tiny check-question.",
+    },
+    overloaded: {
+      plan: "Student is cognitively overloaded (many short replies). Compress hard: one core idea in 2-3 lines. Suggest a 2-minute reset (water/breath). Defer details until they say ready.",
+      budget: "≤60 words. No lists. End with 'একটু জিরিয়ে নাও — তৈরি হলে বলো।'",
+    },
+    disengaged: {
+      plan: "Engagement is dropping. Re-hook with a surprising fact or a 1-line real-world consequence tied to the topic. Then ask a low-effort opinion question to pull them back in.",
+      budget: "≤70 words. End with a curiosity-pull question, not a quiz question.",
+    },
+  };
+
+  const p = plans[s] ?? plans.focused;
+  const metrics = `flow=${flow}/100, focus=${focusMin}m, cadence=${cad}s, avgUserLen=${avg}, idle=${idle}s${c.reason ? `, signal=${c.reason}` : ""}`;
+  const directive = `LIVE COGNITIVE STATE: ${s.toUpperCase()} (${metrics}).
+PEDAGOGICAL CONTRACT: ${p.plan}
+RESPONSE BUDGET: ${p.budget}
+Adapt language warmth and pacing to this state. Never mention these metrics or the contract to the student.`;
+  return { directive, budget: p.budget };
+}
+
+function buildSystemPrompt(topic: string, cognitive: Cognitive, ragContext: string[]) {
   const ragBlock = ragContext.length
     ? `\n\nRELEVANT NCTB CURRICULUM CONTEXT:\n${ragContext.map((c, i) => `[chunk ${i + 1}] ${c}`).join("\n\n")}\n\nUse this context to give accurate, curriculum-grounded explanations in Bangla.`
     : "";
-  return `You are অনুধাবন AI — a warm, intelligent Socratic learning companion for Bangladeshi secondary students. ALWAYS reply in standard Bangla (বাংলা) script — never in English, Banglish, or romanized Bangla, even if the student writes in English. Use simple, clear sentences a teenager can speak aloud. Avoid heavy markdown, code fences, asterisks, or symbols that don't read well in voice; prefer plain Bangla prose with light punctuation. Adapt teaching based on the student's cognitive state. In Socratic mode, ask follow-up questions like a genuinely curious student. Keep responses concise, warm, and pedagogically effective. Never give away answers directly — guide through questions. Current cognitive state: ${cognitiveState || "focused"}. Topic: ${topic || "general"}.${ragBlock}`;
+  const { directive } = cognitiveDirective(cognitive);
+  return `You are অনুধাবন AI — a warm, intelligent Socratic learning companion for Bangladeshi secondary students. ALWAYS reply in standard Bangla (বাংলা) script — never English, Banglish, or romanized Bangla, even if the student writes in English. Use simple sentences a teenager can speak aloud. Avoid heavy markdown, code fences, asterisks. In Socratic mode, ask follow-up questions like a genuinely curious student. Never reveal answers directly — guide through questions.
+
+Topic: ${topic || "general"}.
+
+${directive}${ragBlock}`;
 }
 
 async function withTimeout<T>(p: Promise<T>, ms = TIMEOUT_MS): Promise<T> {
@@ -225,8 +292,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
     const body = await req.json();
-    const { messages = [], topic = "", cognitiveState = "focused", ragContext = [] } = body;
-    const system = buildSystemPrompt(topic, cognitiveState, ragContext);
+    const { messages = [], topic = "", cognitiveState = "focused", cognitive = null, ragContext = [] } = body;
+    const cog: Cognitive = cognitive && typeof cognitive === "object" ? cognitive : { state: cognitiveState };
+    if (!cog.state) cog.state = cognitiveState;
+    const system = buildSystemPrompt(topic, cog, ragContext);
 
     const providers = [tryGemini, tryGroq, tryOpenRouter, tryHuggingFace, tryLovableAI];
     for (const p of providers) {

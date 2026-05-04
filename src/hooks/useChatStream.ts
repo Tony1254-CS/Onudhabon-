@@ -6,6 +6,51 @@ const KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 export type ChatMsg = { role: "user" | "assistant"; content: string };
 
+// In-memory RAG cache keyed by `${topic}::${query}` so re-asking similar things
+// inside one session is instant. Entries expire after 10 minutes.
+type RagEntry = { chunks: string[]; ts: number };
+const RAG_CACHE = new Map<string, RagEntry>();
+const RAG_TTL = 10 * 60 * 1000;
+const RAG_TIMEOUT = 900; // ms — never block the chat for long
+
+const ragKey = (topic: string, query: string) =>
+  `${topic.trim().toLowerCase()}::${query.trim().toLowerCase().slice(0, 160)}`;
+
+async function fetchRag(topic: string, query: string): Promise<string[]> {
+  const key = ragKey(topic, query);
+  const hit = RAG_CACHE.get(key);
+  if (hit && Date.now() - hit.ts < RAG_TTL) return hit.chunks;
+  const ctrl = new AbortController();
+  const t = window.setTimeout(() => ctrl.abort(), RAG_TIMEOUT);
+  try {
+    const r = await fetch(RAG_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` },
+      body: JSON.stringify({ query }),
+      signal: ctrl.signal,
+    });
+    if (!r.ok) return [];
+    const j = await r.json();
+    const chunks: string[] = j.chunks ?? [];
+    RAG_CACHE.set(key, { chunks, ts: Date.now() });
+    return chunks;
+  } catch {
+    return [];
+  } finally {
+    window.clearTimeout(t);
+  }
+}
+
+export type CognitivePayload = {
+  state: string;
+  flowScore?: number;
+  focusMinutes?: number;
+  cadenceSec?: number;
+  avgResponseLength?: number;
+  idleSec?: number;
+  reason?: string;
+};
+
 export function useChatStream() {
   const [streaming, setStreaming] = useState(false);
   const [provider, setProvider] = useState<string | null>(null);
@@ -13,7 +58,12 @@ export function useChatStream() {
 
   const send = useCallback(async (
     messages: ChatMsg[],
-    opts: { topic: string; cognitiveState: string; useRAG?: boolean },
+    opts: {
+      topic: string;
+      cognitiveState: string;
+      cognitive?: CognitivePayload;
+      useRAG?: boolean;
+    },
     onDelta: (text: string) => void,
   ) => {
     setStreaming(true);
@@ -23,29 +73,23 @@ export function useChatStream() {
 
     let ragContext: string[] = [];
     if (opts.useRAG) {
-      try {
-        const lastUser = [...messages].reverse().find(m => m.role === "user")?.content ?? opts.topic;
-        const ragController = new AbortController();
-        const ragTimeout = window.setTimeout(() => ragController.abort(), 1200);
-        const r = await fetch(RAG_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` },
-          body: JSON.stringify({ query: lastUser }),
-          signal: ragController.signal,
-        });
-        window.clearTimeout(ragTimeout);
-        if (r.ok) {
-          const j = await r.json();
-          ragContext = j.chunks ?? [];
-        }
-      } catch { /* silent */ }
+      const lastUser = [...messages].reverse().find(m => m.role === "user")?.content ?? opts.topic;
+      // Cache hit returns instantly; otherwise capped at RAG_TIMEOUT so the
+      // chatbot never feels slow waiting for retrieval.
+      ragContext = await fetchRag(opts.topic, lastUser);
     }
 
     try {
       const resp = await fetch(CHAT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` },
-        body: JSON.stringify({ messages, topic: opts.topic, cognitiveState: opts.cognitiveState, ragContext }),
+        body: JSON.stringify({
+          messages,
+          topic: opts.topic,
+          cognitiveState: opts.cognitiveState,
+          cognitive: opts.cognitive ?? { state: opts.cognitiveState },
+          ragContext,
+        }),
         signal: abortRef.current.signal,
       });
       if (!resp.ok || !resp.body) throw new Error("stream failed");
