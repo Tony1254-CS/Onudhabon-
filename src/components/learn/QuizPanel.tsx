@@ -24,6 +24,7 @@ export function QuizPanel({ topic, online, onSubmit }: { topic: string; online: 
   const questions = useMemo<Q[]>(() => (data?.quiz ? scrambleChoices(data.quiz) : []), [data]);
   const [picks, setPicks] = useState<Record<number, number>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [questionCount, setQuestionCount] = useState(8);
 
   // Auto-generate notes (which contains quiz) if none yet
   useEffect(() => {
@@ -32,14 +33,16 @@ export function QuizPanel({ topic, online, onSubmit }: { topic: string; online: 
   }, [topic]);
 
   // Reset state when topic changes
-  useEffect(() => { setPicks({}); setSubmitted(false); }, [topic]);
+  useEffect(() => { setPicks({}); setSubmitted(false); setQuestionCount(8); }, [topic]);
+
+  const visibleQuestions = useMemo(() => questions.slice(0, Math.min(questionCount, questions.length)), [questionCount, questions]);
 
   const score = useMemo(() => {
-    if (!questions.length) return 0;
-    return questions.reduce((acc, q, i) => acc + (picks[i] === q.correctIdx ? 1 : 0), 0);
-  }, [picks, questions]);
+    if (!visibleQuestions.length) return 0;
+    return visibleQuestions.reduce((acc, q, i) => acc + (picks[i] === q.correctIdx ? 1 : 0), 0);
+  }, [picks, visibleQuestions]);
 
-  const total = questions.length;
+  const total = visibleQuestions.length;
   const pct = total ? Math.round((score / total) * 100) : 0;
 
   const handleSubmit = () => {
@@ -93,6 +96,23 @@ export function QuizPanel({ topic, online, onSubmit }: { topic: string; online: 
           )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          {questions.length > 0 && (
+            <div className="hidden sm:flex items-center rounded-full border border-white/10 bg-white/[0.03] p-0.5 mr-1">
+              {[5, 8, questions.length].map((count, idx) => {
+                const value = idx === 2 ? questions.length : Math.min(count, questions.length);
+                const active = questionCount === value;
+                return (
+                  <button
+                    key={`${count}-${idx}`}
+                    onClick={() => { setQuestionCount(value); setPicks({}); setSubmitted(false); }}
+                    className={`px-2.5 py-1 rounded-full text-[10px] transition ${active ? "bg-amber-400/20 text-amber-100" : "text-white/60 hover:text-white"}`}
+                  >
+                    {idx === 2 ? "সব" : `${value}Q`}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <button
             onClick={reset}
             title="আবার চেষ্টা করো"
@@ -104,7 +124,7 @@ export function QuizPanel({ topic, online, onSubmit }: { topic: string; online: 
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 text-sm">
-        {questions.map((q, i) => {
+        {visibleQuestions.map((q, i) => {
           const picked = picks[i];
           const isCorrect = submitted && picked === q.correctIdx;
           const isWrong = submitted && picked !== undefined && picked !== q.correctIdx;
