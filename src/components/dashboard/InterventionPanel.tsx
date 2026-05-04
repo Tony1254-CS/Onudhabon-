@@ -157,11 +157,10 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
     }
   }
 
-  async function updateStatus(iv: Intervention, status: string) {
-    const patch: Partial<Intervention> = { status };
+  async function updateStatus(iv: Intervention, status: string, feedback?: string) {
+    const patch: Record<string, unknown> = { status };
     if (status === "completed" || status === "improved") {
       patch.completed_at = new Date().toISOString();
-      // Capture current mastery as mastery_after
       const node = nodes.find((n) => n.user_id === iv.student_id && n.concept === iv.concept);
       if (node) {
         patch.mastery_after = node.mastery_level ?? 0;
@@ -170,13 +169,28 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
         }
       }
     }
+    if (feedback !== undefined) {
+      patch.teacher_feedback = feedback || null;
+      patch.reviewed_at = new Date().toISOString();
+    }
     const { data } = await supabase
       .from("interventions")
       .update(patch)
       .eq("id", iv.id)
       .select("*")
       .single();
-    if (data) setInterventions((prev) => prev.map((p) => (p.id === iv.id ? (data as Intervention) : p)));
+    if (data) {
+      setInterventions((prev) => prev.map((p) => (p.id === iv.id ? (data as Intervention) : p)));
+      if (feedback) {
+        await supabase.from("notifications").insert({
+          user_id: iv.student_id,
+          type: "intervention_feedback",
+          title: `শিক্ষকের মন্তব্য: ${iv.concept}`,
+          body: feedback.slice(0, 200),
+          intervention_id: iv.id,
+        });
+      }
+    }
   }
 
   const history = useMemo(() => {
