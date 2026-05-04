@@ -41,6 +41,7 @@ function DashboardPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [chartStudent, setChartStudent] = useState<string>("all");
+  const [reviewTarget, setReviewTarget] = useState<{ studentId: string; studentName: string; conceptId: string; concept: string } | null>(null);
 
   // Auth + role gate
   useEffect(() => {
