@@ -10,6 +10,7 @@ import { ConceptHeatmap } from "@/components/dashboard/ConceptHeatmap";
 import { MasteryChart } from "@/components/dashboard/MasteryChart";
 import { Timeline, type TimelineEntry } from "@/components/dashboard/Timeline";
 import { InterventionPanel } from "@/components/dashboard/InterventionPanel";
+import { QuickReviewModal } from "@/components/dashboard/QuickReviewModal";
 import type { ConceptInput, SessionInput } from "@/lib/weaknessAnalyzer";
 
 export type StudentRow = {
@@ -40,6 +41,7 @@ function DashboardPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [chartStudent, setChartStudent] = useState<string>("all");
+  const [reviewTarget, setReviewTarget] = useState<{ studentId: string; studentName: string; conceptId: string; concept: string } | null>(null);
 
   // Auth + role gate
   useEffect(() => {
@@ -230,10 +232,12 @@ function DashboardPage() {
                           <p className="text-xs text-white/40">{a.subject || "সাধারণ"} • দক্ষতা {Math.round((a.mastery_level ?? 0) * 100)}%</p>
                         </div>
                         <button
-                          onClick={() => {
-                            setSelectedId(a.user_id);
-                            setTimeout(() => document.getElementById("intervention-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-                          }}
+                          onClick={() => setReviewTarget({
+                            studentId: a.user_id,
+                            studentName: a.student,
+                            conceptId: a.id,
+                            concept: a.concept,
+                          })}
                           className="flex shrink-0 items-center gap-1 rounded-md bg-amber-500/20 px-3 py-1.5 text-xs font-medium text-amber-300 hover:bg-amber-500/30"
                         >
                           পর্যালোচনা <ArrowRight className="h-3 w-3" />
@@ -303,6 +307,19 @@ function DashboardPage() {
           </section>
         )}
       </main>
+      {reviewTarget && teacherId && (
+        <QuickReviewModal
+          open={!!reviewTarget}
+          onClose={() => setReviewTarget(null)}
+          studentId={reviewTarget.studentId}
+          studentName={reviewTarget.studentName}
+          conceptId={reviewTarget.conceptId}
+          concept={reviewTarget.concept}
+          teacherId={teacherId}
+          nodes={nodes as ConceptInput[]}
+          sessions={sessions as SessionInput[]}
+        />
+      )}
     </div>
   );
 }
