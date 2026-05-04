@@ -229,9 +229,15 @@ function DashboardPage() {
                           <p className="truncate text-sm text-white"><span className="text-white/60">{a.student}</span> → <span className="font-medium">{a.concept}</span></p>
                           <p className="text-xs text-white/40">{a.subject || "সাধারণ"} • দক্ষতা {Math.round((a.mastery_level ?? 0) * 100)}%</p>
                         </div>
-                        <Link to="/learn" search={{ topic: a.concept }} className="flex shrink-0 items-center gap-1 rounded-md bg-amber-500/20 px-3 py-1.5 text-xs font-medium text-amber-300 hover:bg-amber-500/30">
+                        <button
+                          onClick={() => {
+                            setSelectedId(a.user_id);
+                            setTimeout(() => document.getElementById("intervention-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+                          }}
+                          className="flex shrink-0 items-center gap-1 rounded-md bg-amber-500/20 px-3 py-1.5 text-xs font-medium text-amber-300 hover:bg-amber-500/30"
+                        >
                           পর্যালোচনা <ArrowRight className="h-3 w-3" />
-                        </Link>
+                        </button>
                       </li>
                     ))}
                   </ul>
@@ -284,7 +290,7 @@ function DashboardPage() {
         )}
 
         {!loading && teacherId && (
-          <section className="mt-6">
+          <section id="intervention-panel" className="mt-6">
             <Panel title="হস্তক্ষেপ ও দুর্বলতা বিশ্লেষণ" pulse={false}>
               <InterventionPanel
                 students={students.map((s) => ({ id: s.id, full_name: s.full_name }))}

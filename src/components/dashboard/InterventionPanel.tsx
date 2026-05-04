@@ -35,6 +35,8 @@ type Intervention = {
   created_at: string;
   student_response: string | null;
   submitted_at: string | null;
+  teacher_feedback: string | null;
+  reviewed_at: string | null;
 };
 
 type Props = {
@@ -155,11 +157,10 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
     }
   }
 
-  async function updateStatus(iv: Intervention, status: string) {
-    const patch: Partial<Intervention> = { status };
+  async function updateStatus(iv: Intervention, status: string, feedback?: string) {
+    const patch: Record<string, unknown> = { status };
     if (status === "completed" || status === "improved") {
       patch.completed_at = new Date().toISOString();
-      // Capture current mastery as mastery_after
       const node = nodes.find((n) => n.user_id === iv.student_id && n.concept === iv.concept);
       if (node) {
         patch.mastery_after = node.mastery_level ?? 0;
@@ -168,13 +169,28 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
         }
       }
     }
+    if (feedback !== undefined) {
+      patch.teacher_feedback = feedback || null;
+      patch.reviewed_at = new Date().toISOString();
+    }
     const { data } = await supabase
       .from("interventions")
-      .update(patch)
+      .update(patch as never)
       .eq("id", iv.id)
       .select("*")
       .single();
-    if (data) setInterventions((prev) => prev.map((p) => (p.id === iv.id ? (data as Intervention) : p)));
+    if (data) {
+      setInterventions((prev) => prev.map((p) => (p.id === iv.id ? (data as Intervention) : p)));
+      if (feedback) {
+        await supabase.from("notifications").insert({
+          user_id: iv.student_id,
+          type: "intervention_feedback",
+          title: `শিক্ষকের মন্তব্য: ${iv.concept}`,
+          body: feedback.slice(0, 200),
+          intervention_id: iv.id,
+        });
+      }
+    }
   }
 
   const history = useMemo(() => {
@@ -364,40 +380,12 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
             {submissions.map((iv) => {
               const studentName = students.find((s) => s.id === iv.student_id)?.full_name || "শিক্ষার্থী";
               return (
-                <li key={iv.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-white/60">
-                    <span className="font-medium text-white">{studentName}</span>
-                    <ArrowRight className="h-3 w-3 text-white/30" />
-                    <span className="text-white/80">{iv.concept}</span>
-                    {iv.submitted_at && (
-                      <span className="text-white/40">· {new Date(iv.submitted_at).toLocaleString("bn-BD")}</span>
-                    )}
-                  </div>
-                  <div className="mt-2 flex items-start gap-2 rounded-md bg-white/5 p-2.5">
-                    <MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/40" />
-                    <p className="text-sm text-white/85 whitespace-pre-wrap">{iv.student_response}</p>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <button
-                      onClick={() => updateStatus(iv, "completed")}
-                      className="flex items-center gap-1 rounded-md bg-emerald-500/25 px-3 py-1.5 text-xs font-medium text-emerald-200 hover:bg-emerald-500/35"
-                    >
-                      <CheckCircle2 className="h-3 w-3" /> অনুমোদন (সম্পন্ন)
-                    </button>
-                    <button
-                      onClick={() => updateStatus(iv, "improved")}
-                      className="flex items-center gap-1 rounded-md bg-blue-500/20 px-3 py-1.5 text-xs text-blue-200 hover:bg-blue-500/30"
-                    >
-                      <TrendingUp className="h-3 w-3" /> উন্নতি হয়েছে
-                    </button>
-                    <button
-                      onClick={() => updateStatus(iv, "retry")}
-                      className="flex items-center gap-1 rounded-md bg-amber-500/20 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-500/30"
-                    >
-                      <RotateCcw className="h-3 w-3" /> পুনরায় চেষ্টা চাও
-                    </button>
-                  </div>
-                </li>
+                <SubmissionReviewItem
+                  key={iv.id}
+                  iv={iv}
+                  studentName={studentName}
+                  onAction={(status, feedback) => updateStatus(iv, status, feedback)}
+                />
               );
             })}
           </ul>
@@ -462,6 +450,15 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
                       <p className="text-xs text-white/75 whitespace-pre-wrap">{iv.student_response}</p>
                     </div>
                   )}
+                  {iv.teacher_feedback && (
+                    <div className="mt-1.5 flex items-start gap-1.5 rounded-md border border-amber-500/20 bg-amber-500/5 p-2">
+                      <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-amber-300" />
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-300">শিক্ষকের মন্তব্য</p>
+                        <p className="text-xs text-white/85 whitespace-pre-wrap">{iv.teacher_feedback}</p>
+                      </div>
+                    </div>
+                  )}
                 </li>
               );
             })}
@@ -497,3 +494,61 @@ function TrendBadge({ trend, delta }: { trend: "improving" | "declining" | "flat
   );
 }
 
+function SubmissionReviewItem({
+  iv,
+  studentName,
+  onAction,
+}: {
+  iv: Intervention;
+  studentName: string;
+  onAction: (status: string, feedback?: string) => void | Promise<void>;
+}) {
+  const [feedback, setFeedback] = useState("");
+  const submit = (status: string) => {
+    onAction(status, feedback.trim() || undefined);
+    setFeedback("");
+  };
+  return (
+    <li className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-white/60">
+        <span className="font-medium text-white">{studentName}</span>
+        <ArrowRight className="h-3 w-3 text-white/30" />
+        <span className="text-white/80">{iv.concept}</span>
+        {iv.submitted_at && (
+          <span className="text-white/40">· {new Date(iv.submitted_at).toLocaleString("bn-BD")}</span>
+        )}
+      </div>
+      <div className="mt-2 flex items-start gap-2 rounded-md bg-white/5 p-2.5">
+        <MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/40" />
+        <p className="text-sm text-white/85 whitespace-pre-wrap">{iv.student_response}</p>
+      </div>
+      <textarea
+        value={feedback}
+        onChange={(e) => setFeedback(e.target.value)}
+        placeholder="সংক্ষিপ্ত মন্তব্য লেখো (ঐচ্ছিক) — শিক্ষার্থী এটি দেখতে পাবে"
+        rows={2}
+        className="mt-2 w-full resize-none rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-white outline-none placeholder:text-white/30 focus:border-amber-500/40"
+      />
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button
+          onClick={() => submit("completed")}
+          className="flex items-center gap-1 rounded-md bg-emerald-500/25 px-3 py-1.5 text-xs font-medium text-emerald-200 hover:bg-emerald-500/35"
+        >
+          <CheckCircle2 className="h-3 w-3" /> অনুমোদন (সম্পন্ন)
+        </button>
+        <button
+          onClick={() => submit("improved")}
+          className="flex items-center gap-1 rounded-md bg-blue-500/20 px-3 py-1.5 text-xs text-blue-200 hover:bg-blue-500/30"
+        >
+          <TrendingUp className="h-3 w-3" /> উন্নতি হয়েছে
+        </button>
+        <button
+          onClick={() => submit("retry")}
+          className="flex items-center gap-1 rounded-md bg-amber-500/20 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-500/30"
+        >
+          <RotateCcw className="h-3 w-3" /> পুনরায় চেষ্টা চাও
+        </button>
+      </div>
+    </li>
+  );
+}

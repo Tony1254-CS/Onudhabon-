@@ -1,0 +1,1 @@
+ALTER TABLE public.interventions ADD COLUMN IF NOT EXISTS teacher_feedback text, ADD COLUMN IF NOT EXISTS reviewed_at timestamp with time zone;
