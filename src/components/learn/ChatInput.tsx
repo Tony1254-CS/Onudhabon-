@@ -51,11 +51,17 @@ export function ChatInput({
 
 
   const submit = () => {
-    if (!text.trim() && !image) return;
-    onSend(text.trim(), image ?? undefined);
+    if (!text.trim() && !image && !file) return;
+    let body = text.trim();
+    if (file) {
+      body = `${body ? body + "\n\n" : ""}📎 সংযুক্ত ফাইল: ${file.name}\n\n\`\`\`\n${file.content}\n\`\`\``;
+    }
+    onSend(body, image ?? undefined);
     setText("");
     setImage(null);
+    setFile(null);
   };
+
 
   const onMicDown = () => {
     if (voiceDisabled || transcribing) return;
