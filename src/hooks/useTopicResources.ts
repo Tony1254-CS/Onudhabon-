@@ -69,6 +69,8 @@ const sanitizeResources = (resources: Resources): Resources => ({
   })),
 });
 
+const shouldRefreshNotes = (notes: Notes | null) => !notes || notes.quiz.length < 8;
+
 const slug = (t: string) =>
   t.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^\p{L}\p{N}-]/gu, "").slice(0, 80);
 
@@ -111,7 +113,8 @@ export function useTopicNotes(topic: string) {
     (async () => {
       const cached = await idbGet<CachedItem<Notes>>("notes", key);
       if (cancelled) return;
-      if (cached?.data) { setData(sanitizeNotes(cached.data)); setFromCache(true); }
+      const cleaned = cached?.data ? sanitizeNotes(cached.data) : null;
+      if (cleaned) { setData(cleaned); setFromCache(true); }
       else { setData(null); setFromCache(false); }
     })();
     return () => { cancelled = true; };
@@ -122,7 +125,8 @@ export function useTopicNotes(topic: string) {
     setError(null);
     if (!force) {
       const cached = await idbGet<CachedItem<Notes>>("notes", key);
-      if (cached?.data) { setData(cached.data); setFromCache(true); return; }
+      const cleaned = cached?.data ? sanitizeNotes(cached.data) : null;
+      if (cleaned && !shouldRefreshNotes(cleaned)) { setData(cleaned); setFromCache(true); return; }
     }
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       setError("offline_no_cache");
