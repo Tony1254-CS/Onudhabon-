@@ -90,7 +90,7 @@ function LearnPage() {
   const { supported: ttsSupported, speaking, speak, cancel: cancelSpeak, hasBanglaVoice } = useSpeech();
   const [autoSpeak, setAutoSpeak] = useState(false);
   const baseState = useCognitiveState(signals, phase === "socratic" ? "socratic" : "teaching");
-  const cognitiveState: CognitiveState = attentionOverrideRef.current ?? baseState;
+  const cognitiveState: CognitiveState = attentionOverride ?? baseState;
 
   // auth gate
   useEffect(() => {
@@ -117,11 +117,12 @@ function LearnPage() {
 
   // Attention -> cognitive state override
   useEffect(() => {
-    if (!attentionEnabled) { attentionOverrideRef.current = null; return; }
-    if (attentionStatus === "no-face") attentionOverrideRef.current = "disengaged";
-    else if (attentionStatus === "looking-away") attentionOverrideRef.current = "confused";
-    else if (attentionStatus === "focused") attentionOverrideRef.current = "focused";
-    else attentionOverrideRef.current = null;
+    if (!attentionEnabled) { setAttentionOverride(null); return; }
+    if (attentionStatus === "no-face") setAttentionOverride("disengaged");
+    else if (attentionStatus === "looking-away") setAttentionOverride("confused");
+    else if (attentionStatus === "focused") setAttentionOverride("focused");
+    else if (attentionStatus === "stable") setAttentionOverride("focused");
+    else setAttentionOverride(null);
   }, [attentionEnabled, attentionStatus]);
 
   // autoscroll
