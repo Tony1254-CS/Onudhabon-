@@ -380,40 +380,12 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
             {submissions.map((iv) => {
               const studentName = students.find((s) => s.id === iv.student_id)?.full_name || "শিক্ষার্থী";
               return (
-                <li key={iv.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-white/60">
-                    <span className="font-medium text-white">{studentName}</span>
-                    <ArrowRight className="h-3 w-3 text-white/30" />
-                    <span className="text-white/80">{iv.concept}</span>
-                    {iv.submitted_at && (
-                      <span className="text-white/40">· {new Date(iv.submitted_at).toLocaleString("bn-BD")}</span>
-                    )}
-                  </div>
-                  <div className="mt-2 flex items-start gap-2 rounded-md bg-white/5 p-2.5">
-                    <MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/40" />
-                    <p className="text-sm text-white/85 whitespace-pre-wrap">{iv.student_response}</p>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <button
-                      onClick={() => updateStatus(iv, "completed")}
-                      className="flex items-center gap-1 rounded-md bg-emerald-500/25 px-3 py-1.5 text-xs font-medium text-emerald-200 hover:bg-emerald-500/35"
-                    >
-                      <CheckCircle2 className="h-3 w-3" /> অনুমোদন (সম্পন্ন)
-                    </button>
-                    <button
-                      onClick={() => updateStatus(iv, "improved")}
-                      className="flex items-center gap-1 rounded-md bg-blue-500/20 px-3 py-1.5 text-xs text-blue-200 hover:bg-blue-500/30"
-                    >
-                      <TrendingUp className="h-3 w-3" /> উন্নতি হয়েছে
-                    </button>
-                    <button
-                      onClick={() => updateStatus(iv, "retry")}
-                      className="flex items-center gap-1 rounded-md bg-amber-500/20 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-500/30"
-                    >
-                      <RotateCcw className="h-3 w-3" /> পুনরায় চেষ্টা চাও
-                    </button>
-                  </div>
-                </li>
+                <SubmissionReviewItem
+                  key={iv.id}
+                  iv={iv}
+                  studentName={studentName}
+                  onAction={(status, feedback) => updateStatus(iv, status, feedback)}
+                />
               );
             })}
           </ul>
