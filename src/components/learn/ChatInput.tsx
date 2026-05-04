@@ -107,13 +107,27 @@ export function ChatInput({
 
   return (
     <div className="border-t border-[var(--border)] bg-[var(--bg-secondary)]/60 backdrop-blur-xl p-4">
-      {image && (
-        <div className="mb-3 inline-flex items-center gap-2 p-2 pr-3 rounded-lg bg-white/[0.04] border border-[var(--border)]">
-          <img src={image} alt="" className="w-10 h-10 rounded object-cover" />
-          <span className="text-xs text-[var(--text-secondary)]">ছবি যোগ করা হয়েছে</span>
-          <button onClick={() => setImage(null)} className="text-[var(--text-secondary)] hover:text-white">
-            <X className="w-3.5 h-3.5" />
-          </button>
+      {(image || file) && (
+        <div className="mb-3 flex flex-wrap gap-2">
+          {image && (
+            <div className="inline-flex items-center gap-2 p-2 pr-3 rounded-lg bg-white/[0.04] border border-[var(--border)]">
+              <img src={image} alt="" className="w-10 h-10 rounded object-cover" />
+              <span className="text-xs text-[var(--text-secondary)]">ছবি যোগ করা হয়েছে</span>
+              <button onClick={() => setImage(null)} className="text-[var(--text-secondary)] hover:text-white">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+          {file && (
+            <div className="inline-flex items-center gap-2 p-2 pr-3 rounded-lg bg-white/[0.04] border border-[var(--border)]">
+              <FileText className="w-4 h-4 text-[var(--accent-cold-blue)]" />
+              <span className="text-xs text-[var(--text-secondary)] max-w-[180px] truncate">{file.name}</span>
+              <span className="text-[10px] text-[var(--text-secondary)]/60">{(file.size / 1024).toFixed(0)} KB</span>
+              <button onClick={() => setFile(null)} className="text-[var(--text-secondary)] hover:text-white">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
       )}
       <div className="flex items-end gap-2">
@@ -125,6 +139,23 @@ export function ChatInput({
           <ImageIcon className="w-4 h-4" />
         </button>
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={onPickImage} />
+
+        <button
+          onClick={() => docRef.current?.click()}
+          className="shrink-0 p-2.5 rounded-xl border border-[var(--border)] hover:border-white/20 hover:bg-white/[0.04] text-[var(--text-secondary)] transition-all"
+          title="ফাইল আপলোড (.txt, .md, .csv, .json, .pdf-text)"
+        >
+          <Paperclip className="w-4 h-4" />
+        </button>
+        <input
+          ref={docRef}
+          type="file"
+          accept=".txt,.md,.markdown,.csv,.json,.log,.html,.xml,.yaml,.yml,text/*"
+          className="hidden"
+          onChange={onPickDoc}
+        />
+
+
 
         <textarea
           value={text}
