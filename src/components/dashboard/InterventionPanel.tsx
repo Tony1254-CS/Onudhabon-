@@ -450,6 +450,15 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
                       <p className="text-xs text-white/75 whitespace-pre-wrap">{iv.student_response}</p>
                     </div>
                   )}
+                  {iv.teacher_feedback && (
+                    <div className="mt-1.5 flex items-start gap-1.5 rounded-md border border-amber-500/20 bg-amber-500/5 p-2">
+                      <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-amber-300" />
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-300">শিক্ষকের মন্তব্য</p>
+                        <p className="text-xs text-white/85 whitespace-pre-wrap">{iv.teacher_feedback}</p>
+                      </div>
+                    </div>
+                  )}
                 </li>
               );
             })}
