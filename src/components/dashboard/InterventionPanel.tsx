@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertTriangle, ArrowRight, BookOpen, ChevronDown, ChevronUp, Clock, Sparkles, TrendingDown, TrendingUp, Minus, CheckCircle2, RotateCcw } from "lucide-react";
+import { AlertTriangle, ArrowRight, BookOpen, ChevronDown, ChevronUp, Clock, Sparkles, TrendingDown, TrendingUp, Minus, CheckCircle2, RotateCcw, Inbox, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   analyzeWeakness,
@@ -33,6 +33,8 @@ type Intervention = {
   completed_at: string | null;
   followup_at: string | null;
   created_at: string;
+  student_response: string | null;
+  submitted_at: string | null;
 };
 
 type Props = {
@@ -85,7 +87,20 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
       setInterventions((ivs || []) as Intervention[]);
       setMisconceptions((ms || []) as MisconceptionRecord[]);
     })();
-    return () => { mounted = false; };
+    const channel = supabase
+      .channel("interventions-teacher")
+      .on("postgres_changes", { event: "*", schema: "public", table: "interventions" }, (payload) => {
+        const row = (payload.new || payload.old) as Intervention;
+        if (!row) return;
+        setInterventions((prev) => {
+          if (payload.eventType === "DELETE") return prev.filter((p) => p.id !== row.id);
+          const exists = prev.some((p) => p.id === row.id);
+          if (exists) return prev.map((p) => (p.id === row.id ? (payload.new as Intervention) : p));
+          return [payload.new as Intervention, ...prev];
+        });
+      })
+      .subscribe();
+    return () => { mounted = false; supabase.removeChannel(channel); };
   }, []);
 
   // Build weakness analyses for the selected (or all) student(s)
@@ -165,6 +180,11 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
   const history = useMemo(() => {
     if (filterStudent === "all") return interventions.slice(0, 20);
     return interventions.filter((i) => i.student_id === filterStudent);
+  }, [interventions, filterStudent]);
+
+  const submissions = useMemo(() => {
+    const base = filterStudent === "all" ? interventions : interventions.filter((i) => i.student_id === filterStudent);
+    return base.filter((i) => i.status === "submitted" && !!i.student_response);
   }, [interventions, filterStudent]);
 
   return (
@@ -334,6 +354,56 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
         })}
       </div>
 
+      {/* Submissions awaiting teacher review */}
+      {submissions.length > 0 && (
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4">
+          <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-200">
+            <Inbox className="h-3.5 w-3.5" /> জমা দেওয়া কাজ — পর্যালোচনা প্রয়োজন ({submissions.length})
+          </h3>
+          <ul className="space-y-3">
+            {submissions.map((iv) => {
+              const studentName = students.find((s) => s.id === iv.student_id)?.full_name || "শিক্ষার্থী";
+              return (
+                <li key={iv.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-white/60">
+                    <span className="font-medium text-white">{studentName}</span>
+                    <ArrowRight className="h-3 w-3 text-white/30" />
+                    <span className="text-white/80">{iv.concept}</span>
+                    {iv.submitted_at && (
+                      <span className="text-white/40">· {new Date(iv.submitted_at).toLocaleString("bn-BD")}</span>
+                    )}
+                  </div>
+                  <div className="mt-2 flex items-start gap-2 rounded-md bg-white/5 p-2.5">
+                    <MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/40" />
+                    <p className="text-sm text-white/85 whitespace-pre-wrap">{iv.student_response}</p>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => updateStatus(iv, "completed")}
+                      className="flex items-center gap-1 rounded-md bg-emerald-500/25 px-3 py-1.5 text-xs font-medium text-emerald-200 hover:bg-emerald-500/35"
+                    >
+                      <CheckCircle2 className="h-3 w-3" /> অনুমোদন (সম্পন্ন)
+                    </button>
+                    <button
+                      onClick={() => updateStatus(iv, "improved")}
+                      className="flex items-center gap-1 rounded-md bg-blue-500/20 px-3 py-1.5 text-xs text-blue-200 hover:bg-blue-500/30"
+                    >
+                      <TrendingUp className="h-3 w-3" /> উন্নতি হয়েছে
+                    </button>
+                    <button
+                      onClick={() => updateStatus(iv, "retry")}
+                      className="flex items-center gap-1 rounded-md bg-amber-500/20 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-500/30"
+                    >
+                      <RotateCcw className="h-3 w-3" /> পুনরায় চেষ্টা চাও
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
       {/* Intervention history timeline */}
       <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
         <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/60">
@@ -386,6 +456,12 @@ export function InterventionPanel({ students, nodes, sessions, selectedStudentId
                       </>
                     )}
                   </div>
+                  {iv.student_response && (
+                    <div className="mt-1.5 flex items-start gap-1.5 rounded-md bg-white/5 p-2">
+                      <MessageSquare className="mt-0.5 h-3 w-3 shrink-0 text-white/40" />
+                      <p className="text-xs text-white/75 whitespace-pre-wrap">{iv.student_response}</p>
+                    </div>
+                  )}
                 </li>
               );
             })}
