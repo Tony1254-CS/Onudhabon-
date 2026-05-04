@@ -232,10 +232,12 @@ function DashboardPage() {
                           <p className="text-xs text-white/40">{a.subject || "সাধারণ"} • দক্ষতা {Math.round((a.mastery_level ?? 0) * 100)}%</p>
                         </div>
                         <button
-                          onClick={() => {
-                            setSelectedId(a.user_id);
-                            setTimeout(() => document.getElementById("intervention-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-                          }}
+                          onClick={() => setReviewTarget({
+                            studentId: a.user_id,
+                            studentName: a.student,
+                            conceptId: a.id,
+                            concept: a.concept,
+                          })}
                           className="flex shrink-0 items-center gap-1 rounded-md bg-amber-500/20 px-3 py-1.5 text-xs font-medium text-amber-300 hover:bg-amber-500/30"
                         >
                           পর্যালোচনা <ArrowRight className="h-3 w-3" />
