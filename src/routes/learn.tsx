@@ -593,7 +593,7 @@ function LearnPage() {
       <MasteryBurst />
       <div className="pt-16 h-screen flex">
         <LeftPanel topic={topic} onTopic={startTeaching} nodes={leftNodes} />
-        <MobileLearnDrawers topic={topic} onTopic={startTeaching} nodes={leftNodes} concepts={concepts} cognitiveState={cognitiveState} onDeleteConcept={deleteConcept} online={online} />
+        <MobileLearnDrawers topic={topic} onTopic={startTeaching} nodes={leftNodes} concepts={concepts} cognitiveState={cognitiveState} signals={signals} mode={phase === "socratic" ? "socratic" : "teaching"} onDeleteConcept={deleteConcept} online={online} />
 
         {/* CENTER */}
         <main className="flex-1 flex flex-col min-w-0 relative">
