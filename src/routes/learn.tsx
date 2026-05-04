@@ -82,7 +82,7 @@ function LearnPage() {
   const [attentionEnabled, setAttentionEnabled] = useState(false);
   const [showConsent, setShowConsent] = useState(false);
   const [attentionStatus, setAttentionStatus] = useState<AttentionStatus>("off");
-  const attentionOverrideRef = useRef<CognitiveState | null>(null);
+  const [attentionOverride, setAttentionOverride] = useState<CognitiveState | null>(null);
 
   const [rightCollapsed, setRightCollapsed] = useState(false);
 
