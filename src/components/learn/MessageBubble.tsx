@@ -2,6 +2,8 @@ import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import { Volume2, VolumeX } from "lucide-react";
 import type { ChatMsg } from "@/hooks/useChatStream";
+import type { CognitiveState } from "@/hooks/useCognitiveState";
+import { CognitiveHint } from "./CognitiveHint";
 
 export function MessageBubble({
   msg,
@@ -10,7 +12,7 @@ export function MessageBubble({
   speaking,
   onSpeak,
 }: {
-  msg: ChatMsg & { image?: string };
+  msg: ChatMsg & { image?: string; cogState?: CognitiveState };
   streaming?: boolean;
   canSpeak?: boolean;
   speaking?: boolean;
@@ -23,7 +25,7 @@ export function MessageBubble({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
-      className={`flex ${isAI ? "justify-start" : "justify-end"} mb-4`}
+      className={`flex flex-col ${isAI ? "items-start" : "items-end"} mb-4`}
     >
       <div
         className={`group relative max-w-[78%] px-4 py-3 rounded-2xl backdrop-blur-xl border text-[15px] leading-relaxed ${
@@ -56,6 +58,7 @@ export function MessageBubble({
           </button>
         )}
       </div>
+      {isAI && !streaming && msg.cogState && <CognitiveHint state={msg.cogState} />}
     </motion.div>
   );
 }

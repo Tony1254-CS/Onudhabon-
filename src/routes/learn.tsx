@@ -71,7 +71,7 @@ function LearnPage() {
 
   const [phase, setPhase] = useState<Phase>("topic");
   const [topic, setTopic] = useState("");
-  const [messages, setMessages] = useState<(ChatMsg & { image?: string })[]>([]);
+  const [messages, setMessages] = useState<(ChatMsg & { image?: string; cogState?: CognitiveState })[]>([]);
   const [signals, setSignals] = useState<Signal[]>([]);
   const [concepts, setConcepts] = useState<ExtractedConcept[]>([]);
   const [extracting, setExtracting] = useState(false);
@@ -457,7 +457,7 @@ function LearnPage() {
     history: ChatMsg[], topicVal: string, state: string, useRAG: boolean,
     extractionMode: Phase, onDone?: () => void,
   ) => {
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+    setMessages((prev) => [...prev, { role: "assistant", content: "", cogState: state as CognitiveState }]);
     let acc = "";
     send(history, {
       topic: topicVal,
