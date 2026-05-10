@@ -75,16 +75,16 @@ export function ResourcesPanel({ topic, online }: { topic: string; online: boole
             </h4>
             <div className="space-y-2">
               {data.videos.map((v, i) => (
-                <motion.a
-                  key={i}
-                  href={v.url} target="_blank" rel="noopener noreferrer"
-                  initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                  className="block rounded-xl border border-red-400/15 bg-red-400/[0.04] p-2.5 hover:bg-red-400/[0.08] transition"
-                >
-                  <p className="text-xs font-medium text-white leading-snug">{v.title}</p>
-                  {v.channel && <p className="text-[10px] text-red-300/80 mt-0.5">▶ {v.channel}</p>}
-                  <p className="text-[11px] text-white/60 mt-1 leading-relaxed">{v.description}</p>
-                </motion.a>
+                <ResourceCard
+                  key={`v-${i}`}
+                  title={v.title}
+                  url={v.url}
+                  description={v.description}
+                  meta={v.channel ? `▶ ${v.channel}` : undefined}
+                  tone="red"
+                  variant="video"
+                  delay={i * 0.04}
+                />
               ))}
             </div>
           </section>
@@ -97,16 +97,16 @@ export function ResourcesPanel({ topic, online }: { topic: string; online: boole
             </h4>
             <div className="space-y-2">
               {data.articles.map((a, i) => (
-                <motion.a
-                  key={i}
-                  href={a.url} target="_blank" rel="noopener noreferrer"
-                  initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                  className="block rounded-xl border border-blue-400/15 bg-blue-400/[0.04] p-2.5 hover:bg-blue-400/[0.08] transition"
-                >
-                  <p className="text-xs font-medium text-white leading-snug">{a.title}</p>
-                  {a.source && <p className="text-[10px] text-blue-300/80 mt-0.5">📰 {a.source}</p>}
-                  <p className="text-[11px] text-white/60 mt-1 leading-relaxed">{a.description}</p>
-                </motion.a>
+                <ResourceCard
+                  key={`a-${i}`}
+                  title={a.title}
+                  url={a.url}
+                  description={a.description}
+                  meta={a.source ? `📰 ${a.source}` : undefined}
+                  tone="blue"
+                  variant="article"
+                  delay={i * 0.04}
+                />
               ))}
             </div>
           </section>
@@ -119,14 +119,15 @@ export function ResourcesPanel({ topic, online }: { topic: string; online: boole
             </h4>
             <div className="space-y-2">
               {data.practice.map((p, i) => (
-                <a
-                  key={i}
-                  href={p.url} target="_blank" rel="noopener noreferrer"
-                  className="block rounded-xl border border-emerald-400/15 bg-emerald-400/[0.04] p-2.5 hover:bg-emerald-400/[0.08] transition"
-                >
-                  <p className="text-xs font-medium text-white leading-snug">{p.title}</p>
-                  <p className="text-[11px] text-white/60 mt-1 leading-relaxed">{p.description}</p>
-                </a>
+                <ResourceCard
+                  key={`p-${i}`}
+                  title={p.title}
+                  url={p.url}
+                  description={p.description}
+                  tone="emerald"
+                  variant="practice"
+                  delay={i * 0.04}
+                />
               ))}
             </div>
           </section>
