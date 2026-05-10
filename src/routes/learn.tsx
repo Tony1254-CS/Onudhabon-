@@ -457,7 +457,7 @@ function LearnPage() {
     history: ChatMsg[], topicVal: string, state: string, useRAG: boolean,
     extractionMode: Phase, onDone?: () => void,
   ) => {
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+    setMessages((prev) => [...prev, { role: "assistant", content: "", cogState: state as CognitiveState }]);
     let acc = "";
     send(history, {
       topic: topicVal,
