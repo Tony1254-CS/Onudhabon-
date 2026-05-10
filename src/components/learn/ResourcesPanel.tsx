@@ -1,7 +1,7 @@
 import { useEffect } from "react";
-import { motion } from "framer-motion";
 import { Youtube, FileText, ExternalLink, Sparkles, RefreshCw, WifiOff, AlertCircle, Wrench, CheckCircle2 } from "lucide-react";
 import { useTopicResourceLinks } from "@/hooks/useTopicResources";
+import { ResourceCard } from "./ResourceCard";
 
 export function ResourcesPanel({ topic, online }: { topic: string; online: boolean }) {
   const { data, loading, error, fromCache, generate } = useTopicResourceLinks(topic);
