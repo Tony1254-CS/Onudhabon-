@@ -100,10 +100,22 @@ function LearnPage() {
       if (!mounted) return;
       setAuthed(!!s); setUserId(s?.user.id ?? null);
     });
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!mounted) return;
       setAuthed(!!session); setUserId(session?.user.id ?? null);
-      if (!session) navigate({ to: "/login" });
+      if (!session) { navigate({ to: "/login" }); return; }
+      // /learn (with the AI chatbot) is a student-only surface.
+      // Redirect teachers / parents away so the chatbot UI never appears for them.
+      try {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", session.user.id)
+          .maybeSingle();
+        if (!mounted) return;
+        if (prof?.role === "teacher") navigate({ to: "/dashboard" });
+        else if (prof?.role === "parent") navigate({ to: "/track" });
+      } catch { /* fall through — default to student view */ }
     });
     return () => { mounted = false; sub.subscription.unsubscribe(); };
   }, [navigate]);
