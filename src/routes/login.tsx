@@ -20,13 +20,29 @@ function LoginPage() {
     e.preventDefault();
     setErr(null);
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
+      setLoading(false);
       setErr(error.message);
       return;
     }
-    navigate({ to: "/learn" });
+    // Route by role so teachers/parents don't land in the student chat UI
+    let dest: "/learn" | "/dashboard" | "/track" = "/learn";
+    try {
+      const uid = data.user?.id;
+      if (uid) {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", uid)
+          .maybeSingle();
+        const role = prof?.role;
+        if (role === "teacher") dest = "/dashboard";
+        else if (role === "parent") dest = "/track";
+      }
+    } catch { /* fall back to /learn */ }
+    setLoading(false);
+    navigate({ to: dest });
   };
 
   return (
