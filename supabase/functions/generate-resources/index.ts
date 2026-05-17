@@ -68,6 +68,73 @@ const TOOL = {
   },
 };
 
+// --- URL validation helpers ---
+const ytSearch = (q: string) => `https://www.youtube.com/results?search_query=${encodeURIComponent(q.slice(0, 120))}`;
+const webSearch = (q: string) => `https://duckduckgo.com/?q=${encodeURIComponent(q.slice(0, 120))}`;
+
+function extractYouTubeId(url: string): string | null {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, "");
+    if (host === "youtu.be") return u.pathname.slice(1).split("/")[0] || null;
+    if (host === "youtube.com" || host === "m.youtube.com") {
+      if (u.pathname === "/watch") return u.searchParams.get("v");
+      const m = u.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]+)/);
+      if (m) return m[1];
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+async function checkYouTube(url: string): Promise<boolean> {
+  const id = extractYouTubeId(url);
+  if (!id) return false;
+  try {
+    // oEmbed returns 200 only when video exists & is embeddable
+    const r = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${id}&format=json`, {
+      signal: AbortSignal.timeout(4000),
+    });
+    return r.ok;
+  } catch { return false; }
+}
+
+async function checkUrl(url: string): Promise<boolean> {
+  try {
+    const r = await fetch(url, {
+      method: "GET",
+      redirect: "follow",
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; OnudhabonBot/1.0)" },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!r.ok) return false;
+    const ct = r.headers.get("content-type") || "";
+    return ct.includes("html") || ct.includes("pdf") || ct.includes("text");
+  } catch { return false; }
+}
+
+type AnyRes = { title: string; url: string; description?: string; channel?: string; source?: string };
+
+async function validateResources(data: any, topic: string) {
+  const videos = Array.isArray(data.videos) ? data.videos : [];
+  const articles = Array.isArray(data.articles) ? data.articles : [];
+  const practice = Array.isArray(data.practice) ? data.practice : [];
+
+  const vChecked = await Promise.all(videos.map(async (v: AnyRes) => {
+    const ok = await checkYouTube(v.url);
+    return { ...v, url: ok ? v.url : ytSearch(`${topic} ${v.title}`) };
+  }));
+  const aChecked = await Promise.all(articles.map(async (a: AnyRes) => {
+    const ok = await checkUrl(a.url);
+    return { ...a, url: ok ? a.url : webSearch(`${topic} ${a.title} ${a.source ?? ""}`) };
+  }));
+  const pChecked = await Promise.all(practice.map(async (p: AnyRes) => {
+    const ok = await checkUrl(p.url);
+    return { ...p, url: ok ? p.url : webSearch(`${topic} ${p.title} interactive`) };
+  }));
+
+  return { videos: vChecked, articles: aChecked, practice: pChecked };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
