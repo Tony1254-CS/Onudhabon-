@@ -1,13 +1,27 @@
 import { motion } from "framer-motion";
-import { Mic, Network, Gauge, Sparkles, Languages, WifiOff } from "lucide-react";
+import {
+  Mic, Network, Gauge, Sparkles, Languages, WifiOff,
+  Eye, Brain, GraduationCap, MessageSquare, ListChecks, PlayCircle,
+  NotebookPen, Users, Lightbulb, ShieldCheck,
+} from "lucide-react";
 
 const features = [
   { icon: Mic, title: "Socratic Teach-Back", desc: "Teach the AI back in Bangla. It listens, evaluates, and probes deeper." },
   { icon: Network, title: "Live Mind Map", desc: "Watch your understanding take shape — concept by concept, in real time." },
-  { icon: Gauge, title: "Cognitive State Engine", desc: "The system reads your mental state and adapts pace, tone, and challenge." },
+  { icon: Gauge, title: "Cognitive State Engine", desc: "7 states with smoothing + hysteresis. No flicker, just steady reads." },
+  { icon: Eye, title: "Attention Tracking", desc: "On-device face signals via face-api.js. Nothing leaves your browser." },
+  { icon: Lightbulb, title: "Cognitive Hints", desc: "The AI quietly explains why it simplified, deepened, or slowed down." },
   { icon: Sparkles, title: "Knowledge Galaxy", desc: "A 3D universe of mastered concepts. Every star is a thing you truly know." },
-  { icon: Languages, title: "Bangla-First", desc: "Full voice interaction in Bangla — built for how Bangladeshi students think." },
-  { icon: WifiOff, title: "Offline Capsule", desc: "Download a learning capsule. Continue without internet. Sync when you return." },
+  { icon: Brain, title: "Mastery Engine", desc: "Exposure → Developing → Practiced → Mastered, with retention decay." },
+  { icon: ListChecks, title: "Adaptive Quizzes", desc: "Deeper question pool that adapts to your current cognitive state." },
+  { icon: PlayCircle, title: "Verified Resources", desc: "Every YouTube / link is validated with a working preview card." },
+  { icon: NotebookPen, title: "Auto Notes", desc: "Session notes generated and saved per topic — ready to revise." },
+  { icon: MessageSquare, title: "Multi-provider RAG", desc: "Gemini → Groq → OpenRouter failover, grounded in NCTB curriculum." },
+  { icon: GraduationCap, title: "Teacher Dashboard", desc: "Weakness heatmap, interventions, classroom view — all in one place." },
+  { icon: Users, title: "Classrooms & Tracking", desc: "Parents and teachers follow real progress, not just marks." },
+  { icon: Languages, title: "Bangla-First", desc: "Full voice + UI in Bangla — built for how Bangladeshi students think." },
+  { icon: WifiOff, title: "Offline Capsule + PWA", desc: "Download a capsule, learn offline, sync when you return." },
+  { icon: ShieldCheck, title: "Role-Aware Surfaces", desc: "Students, teachers, and parents each see only what they need." },
 ];
 
 const ease = [0.25, 1, 0.5, 1] as const;
@@ -27,8 +41,11 @@ export function Features() {
             What's Inside
           </p>
           <h2 className="font-display text-4xl md:text-5xl lg:text-6xl tracking-tight text-balance">
-            Six surfaces. One mind.
+            Sixteen surfaces. One mind.
           </h2>
+          <p className="mt-5 text-[var(--text-secondary)] max-w-2xl mx-auto text-base">
+            Every capability we've shipped — from cognitive sensing to verified resources — in one cohesive system.
+          </p>
         </motion.div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -38,7 +55,7 @@ export function Features() {
               initial={{ opacity: 0, y: 40 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-60px" }}
-              transition={{ duration: 0.6, delay: (i % 3) * 0.1 + Math.floor(i / 3) * 0.15, ease }}
+              transition={{ duration: 0.5, delay: (i % 3) * 0.08 + Math.floor(i / 3) * 0.06, ease }}
               whileHover={{ y: -4 }}
               className="group glass rounded-2xl p-7 hover:border-[var(--accent-cold-blue)]/30 transition-all hover:shadow-[0_0_40px_-10px_rgba(96,165,250,0.4)] relative overflow-hidden"
             >

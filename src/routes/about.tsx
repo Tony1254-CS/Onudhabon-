@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { Sparkles, Brain, Code2, Telescope, ArrowRight, Check, Mic, Network, Gauge, Languages, WifiOff, Eye, Camera, Workflow, GraduationCap, MessageSquare } from "lucide-react";
+import { Sparkles, Brain, Code2, Telescope, ArrowRight, Check, Mic, Network, Gauge, Languages, WifiOff, Eye, Camera, Workflow, GraduationCap, MessageSquare, ListChecks, PlayCircle, NotebookPen, Users, Lightbulb, ShieldCheck } from "lucide-react";
 import { Navbar } from "@/components/landing/Navbar";
 
 export const Route = createFileRoute("/about")({
@@ -215,13 +215,19 @@ function AboutPage() {
               {[
                 { icon: Mic, title: "Socratic Teach-Back", desc: "ছাত্র AI-কে শেখায় বাংলায়; সিস্টেম গভীরতা পরিমাপ করে।", color: "#60A5FA" },
                 { icon: Network, title: "Live Mind Map", desc: "প্রতিটি বাক্য থেকে রিয়েল-টাইম concept graph তৈরি হয়।", color: "#A78BFA" },
-                { icon: Gauge, title: "Cognitive State Engine", desc: "Flow / Focused / Overloaded — ৭টি state, hysteresis সহ।", color: "#F59E0B" },
+                { icon: Gauge, title: "Cognitive State Engine", desc: "Flow / Focused / Overloaded — ৭টি state, smoothing + hysteresis।", color: "#F59E0B" },
                 { icon: Eye, title: "Attention Tracking", desc: "face-api.js দিয়ে on-device মনোযোগ সংকেত — কোনো ভিডিও সংরক্ষণ নয়।", color: "#34D399" },
+                { icon: Lightbulb, title: "Cognitive Hints", desc: "AI কেন সহজ/গভীর করেছে — ছোট চিপে বুঝিয়ে দেয়, metrics লুকানো।", color: "#FBBF24" },
                 { icon: Telescope, title: "Knowledge Galaxy", desc: "3D তারা-মানচিত্র — প্রতিটি mastered ধারণা একটি নক্ষত্র।", color: "#FB923C" },
                 { icon: Brain, title: "Mastery Engine", desc: "Exposure → Developing → Practiced → Mastered, retention সহ।", color: "#F472B6" },
+                { icon: ListChecks, title: "Adaptive Quizzes", desc: "বড় প্রশ্ন pool, cognitive state অনুযায়ী কঠিন/সহজ হয়।", color: "#60A5FA" },
+                { icon: PlayCircle, title: "Verified Resource Cards", desc: "YouTube/লিঙ্ক validate, preview সহ — broken লিঙ্ক fallback।", color: "#A78BFA" },
+                { icon: NotebookPen, title: "Auto Notes", desc: "প্রতিটি টপিকের জন্য AI-জেনারেটেড নোট, সংরক্ষিত ও পুনঃপাঠযোগ্য।", color: "#34D399" },
                 { icon: GraduationCap, title: "Teacher Dashboard", desc: "দুর্বলতা heatmap, intervention assignment, classroom view।", color: "#60A5FA" },
                 { icon: Workflow, title: "Intervention Loop", desc: "Quick Review → ছাত্রের কাছে notification → submission → feedback।", color: "#A78BFA" },
-                { icon: MessageSquare, title: "Multi-provider RAG", desc: "Gemini → Groq → OpenRouter failover, NCTB curriculum সহ।", color: "#F59E0B" },
+                { icon: Users, title: "Classrooms & Tracking", desc: "অভিভাবক ও শিক্ষক real progress দেখেন — শুধু নম্বর নয়।", color: "#F472B6" },
+                { icon: ShieldCheck, title: "Role-Aware Surfaces", desc: "Student / Teacher / Parent — প্রত্যেকে শুধু নিজের প্রয়োজনীয়টা দেখে।", color: "#FB923C" },
+                { icon: MessageSquare, title: "Multi-provider RAG", desc: "Gemini → Groq → OpenRouter failover, streaming সহ।", color: "#F59E0B" },
                 { icon: Camera, title: "Voice + Image + File", desc: "Web Speech, Whisper push-to-talk, ছবি ও ফাইল আপলোড।", color: "#34D399" },
                 { icon: Languages, title: "Bangla-First", desc: "সম্পূর্ণ বাংলা UI, voice ও TTS — বাংলাদেশি ছাত্রের জন্য।", color: "#FB923C" },
                 { icon: WifiOff, title: "Offline Capsule + PWA", desc: "ক্যাপসুল ডাউনলোড করে নেট ছাড়াই শেখা, পরে sync।", color: "#F472B6" },
