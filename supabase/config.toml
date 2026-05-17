@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.socratic-evaluate]
 verify_jwt = false
+
+[functions.generate-quiz]
+verify_jwt = false
