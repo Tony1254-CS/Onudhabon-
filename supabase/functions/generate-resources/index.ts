@@ -106,7 +106,8 @@ Deno.serve(async (req) => {
     const argStr = j.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
     if (!argStr) return new Response(JSON.stringify({ error: "no result" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const data = JSON.parse(argStr);
-    return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const validated = await validateResources(data, topic);
+    return new Response(JSON.stringify(validated), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("generate-resources error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "unknown" }), {
