@@ -7,8 +7,8 @@ import { toast } from "sonner";
 type AttachedFile = { name: string; size: number; content: string };
 
 export function ChatInput({
-  onSend, disabled, placeholder, voiceDisabled, voiceDisabledMessage,
-}: { onSend: (text: string, image?: string) => void; disabled?: boolean; placeholder?: string; voiceDisabled?: boolean; voiceDisabledMessage?: string }) {
+  onSend, disabled, placeholder, voiceDisabled, voiceDisabledMessage, onKeystroke,
+}: { onSend: (text: string, image?: string) => void; disabled?: boolean; placeholder?: string; voiceDisabled?: boolean; voiceDisabledMessage?: string; onKeystroke?: (isBackspace: boolean) => void }) {
   const [text, setText] = useState("");
   const [image, setImage] = useState<string | null>(null);
   const [file, setFile] = useState<AttachedFile | null>(null);
@@ -160,7 +160,10 @@ export function ChatInput({
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
+          onKeyDown={(e) => {
+            if (onKeystroke) onKeystroke(e.key === "Backspace" || e.key === "Delete");
+            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
+          }}
           placeholder={transcribing ? "Whisper অনুবাদ করছে…" : (placeholder ?? "তোমার প্রশ্ন বা ব্যাখ্যা লেখো…")}
           rows={1}
           className="flex-1 resize-none max-h-32 bg-white/[0.03] border border-[var(--border)] rounded-xl px-4 py-2.5 text-[15px] font-bangla placeholder:text-[var(--text-secondary)]/60 focus:outline-none focus:border-[var(--accent-blue)]/60 transition-colors"

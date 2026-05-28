@@ -19,7 +19,8 @@ import { MasteryBurst } from "@/components/learn/MasteryBurst";
 import { AttentionWidget, AttentionConsentModal, type AttentionStatus } from "@/components/learn/AttentionWidget";
 import { SessionHistoryButton, type SessionRow } from "@/components/learn/SessionHistory";
 import { useChatStream, type ChatMsg } from "@/hooks/useChatStream";
-import { useCognitiveMetrics, type Signal, type CognitiveState } from "@/hooks/useCognitiveState";
+import { useCognitiveMetrics, type Signal, type CognitiveState, type CoachActionId } from "@/hooks/useCognitiveState";
+import { useTypingMetrics } from "@/hooks/useTypingMetrics";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useSpeech } from "@/hooks/useSpeech";
 import { Volume2, VolumeX, Brain, BookOpen, Activity, Trophy, ExternalLink, ChevronRight, PanelRightClose } from "lucide-react";
@@ -84,11 +85,11 @@ function LearnPage() {
   const [showTeachBack, setShowTeachBack] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Attention engine state
+  // Attention engine state — fused into the cognitive engine
   const [attentionEnabled, setAttentionEnabled] = useState(false);
   const [showConsent, setShowConsent] = useState(false);
   const [attentionStatus, setAttentionStatus] = useState<AttentionStatus>("off");
-  const [attentionOverride, setAttentionOverride] = useState<CognitiveState | null>(null);
+  const [attentionSnap, setAttentionSnap] = useState<{ faceMissingFor: number; awayCount30s: number }>({ faceMissingFor: 0, awayCount30s: 0 });
 
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -97,9 +98,15 @@ function LearnPage() {
   const { send, streaming, provider } = useChatStream();
   const { supported: ttsSupported, speaking, speak, cancel: cancelSpeak, hasBanglaVoice } = useSpeech();
   const [autoSpeak, setAutoSpeak] = useState(false);
-  const cognitiveMetrics = useCognitiveMetrics(signals, phase === "socratic" ? "socratic" : "teaching");
-  const baseState = cognitiveMetrics.state;
-  const cognitiveState: CognitiveState = attentionOverride ?? baseState;
+  const typing = useTypingMetrics();
+  const fragilePrereq = useMemo(() => concepts.find((c) => c.fragilePath?.length)?.fragilePath?.[0] ?? null, [concepts]);
+  const cognitiveExtra = useMemo(() => ({
+    attention: attentionEnabled ? { status: attentionStatus, ...attentionSnap } : undefined,
+    typing: typing.snap,
+    fragilePrereq,
+  }), [attentionEnabled, attentionStatus, attentionSnap, typing.snap, fragilePrereq]);
+  const cognitiveMetrics = useCognitiveMetrics(signals, phase === "socratic" ? "socratic" : "teaching", cognitiveExtra);
+  const cognitiveState: CognitiveState = cognitiveMetrics.state;
 
   // auth gate
   useEffect(() => {
@@ -136,15 +143,7 @@ function LearnPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authed, search.topic]);
 
-  // Attention -> cognitive state override
-  useEffect(() => {
-    if (!attentionEnabled) { setAttentionOverride(null); return; }
-    if (attentionStatus === "no-face") setAttentionOverride("disengaged");
-    else if (attentionStatus === "looking-away") setAttentionOverride("confused");
-    else if (attentionStatus === "focused") setAttentionOverride("focused");
-    else if (attentionStatus === "stable") setAttentionOverride("focused");
-    else setAttentionOverride(null);
-  }, [attentionEnabled, attentionStatus]);
+  // Attention is now fused into useCognitiveMetrics via cognitiveExtra — no override needed.
 
   // autoscroll
   useEffect(() => {
@@ -780,7 +779,7 @@ function LearnPage() {
             enabled={attentionEnabled}
             onConsentRequest={() => setShowConsent(true)}
             onDisable={() => setAttentionEnabled(false)}
-            onSignal={(s) => setAttentionStatus(s.status)}
+            onSignal={(s) => { setAttentionStatus(s.status); setAttentionSnap({ faceMissingFor: s.faceMissingFor, awayCount30s: s.awayCount30s }); }}
           />
           <AttentionConsentModal
             open={showConsent}
@@ -963,7 +962,7 @@ function LearnPage() {
                   id: "state",
                   label: "State",
                   icon: <Activity className="w-3.5 h-3.5" />,
-                  content: <CognitivePanel state={cognitiveState} signals={signals} mode={phase === "socratic" ? "socratic" : "teaching"} />,
+                  content: <CognitivePanel state={cognitiveState} signals={signals} mode={phase === "socratic" ? "socratic" : "teaching"} extra={cognitiveExtra} onAction={handleCoachAction} />,
                 },
               ]}
             />
