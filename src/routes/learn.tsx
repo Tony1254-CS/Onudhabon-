@@ -720,6 +720,20 @@ function LearnPage() {
               <div className="flex items-center gap-3 min-w-0">
                 <Sparkles className="w-4 h-4 text-[var(--accent-gold)] shrink-0" />
                 <h2 className="font-bangla text-sm truncate">{topic}</h2>
+                <select
+                  value={subject}
+                  onChange={(e) => {
+                    const s = e.target.value as Subject;
+                    setSubject(s);
+                    if (typeof window !== "undefined") localStorage.setItem("learn_subject", s);
+                  }}
+                  className="shrink-0 text-[11px] font-bangla bg-[var(--accent-blue)]/10 border border-[var(--accent-blue)]/40 text-[var(--accent-cold-blue)] rounded-full px-2 py-0.5 focus:outline-none"
+                  title="বিষয় পরিবর্তন করো"
+                >
+                  {SUBJECTS.map((s) => (
+                    <option key={s} value={s} className="bg-[var(--bg-primary)] text-[var(--text-primary)]">{s}</option>
+                  ))}
+                </select>
               </div>
               <div className="flex items-center gap-2">
                 <SessionHistoryButton
