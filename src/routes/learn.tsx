@@ -355,7 +355,7 @@ function LearnPage() {
       return {
         user_id: userId,
         concept: g.name,
-        subject: topicVal,
+        subject,
         statement: sentenceMatch || trimmed || g.name,
         tag,
         weakness_type: "conceptual",
