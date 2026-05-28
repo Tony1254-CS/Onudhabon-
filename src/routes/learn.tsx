@@ -72,6 +72,11 @@ function LearnPage() {
 
   const [phase, setPhase] = useState<Phase>("topic");
   const [topic, setTopic] = useState("");
+  const [subject, setSubject] = useState<Subject>(() => {
+    if (typeof window === "undefined") return "অন্যান্য";
+    const saved = localStorage.getItem("learn_subject");
+    return (SUBJECTS as readonly string[]).includes(saved ?? "") ? (saved as Subject) : "অন্যান্য";
+  });
   const [messages, setMessages] = useState<(ChatMsg & { image?: string; cogState?: CognitiveState })[]>([]);
   const [signals, setSignals] = useState<Signal[]>([]);
   const [concepts, setConcepts] = useState<ExtractedConcept[]>([]);
