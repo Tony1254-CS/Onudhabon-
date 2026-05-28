@@ -336,7 +336,7 @@ function LearnPage() {
   // For each concept the verdict marked as "gap", store the student's literal
   // explanation as the misconception statement, plus a short canonical tag.
   const recordMisconceptions = async (
-    topicVal: string,
+    _topicVal: string,
     verdicts: ExtractedConcept[],
     studentExplanation: string,
   ) => {
