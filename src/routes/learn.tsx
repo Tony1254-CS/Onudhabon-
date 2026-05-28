@@ -447,13 +447,14 @@ function LearnPage() {
         .from("sessions")
         .update({
           topic,
+          subject,
           cognitive_state: cognitiveState,
           messages: messages as any,
         })
         .eq("id", currentSessionId);
     }, 800);
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
-  }, [messages, streaming, currentSessionId, userId, online, topic, cognitiveState, phase]);
+  }, [messages, streaming, currentSessionId, userId, online, topic, subject, cognitiveState, phase]);
 
 
   // mode = "merge" : take the higher confidence (used in teaching to grow the map without ever auto-mastering)
