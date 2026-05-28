@@ -1,10 +1,15 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Plus, Trash2, Loader2, KeyRound, Activity, Brain, AlertTriangle } from "lucide-react";
+import {
+  ArrowLeft, Plus, Trash2, Loader2, KeyRound, Activity, Brain,
+  AlertTriangle, ChevronDown, ChevronUp,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/landing/Navbar";
 import { toast } from "sonner";
+import { StudentDetail, type RichStudentData, type SubjectMastery, type SparklineDay, type RecentSession, type CognitiveDist, type LearningGoal } from "@/components/track/StudentDetail";
+import { ParentMessageModal } from "@/components/track/ParentMessageModal";
 
 export const Route = createFileRoute("/track")({
   head: () => ({ meta: [{ title: "শিক্ষার্থী ট্র্যাকিং — অনুধাবন AI" }] }),
@@ -22,6 +27,7 @@ type LinkedStudent = {
   weakest: string | null;
   lastSession: string | null;
   cognitiveState: string | null;
+  richData: RichStudentData | null;
 };
 
 const STATE_LABELS: Record<string, { label: string; color: string }> = {
@@ -30,7 +36,11 @@ const STATE_LABELS: Record<string, { label: string; color: string }> = {
   overloaded: { label: "অতিরিক্ত", color: "#EF4444" },
   disengaged: { label: "নিষ্ক্রিয়", color: "#6B7280" },
   "mastery-ready": { label: "দক্ষতাপ্রস্তুত", color: "#3B82F6" },
+  flow: { label: "ফ্লো", color: "#8B5CF6" },
+  exploring: { label: "অন্বেষণ", color: "#22C55E" },
 };
+
+const KNOWN_SUBJECTS = ["পদার্থবিজ্ঞান", "রসায়ন", "জীববিজ্ঞান", "গণিত"];
 
 function TrackPage() {
   const navigate = useNavigate();
@@ -40,6 +50,8 @@ function TrackPage() {
   const [loading, setLoading] = useState(true);
   const [code, setCode] = useState("");
   const [adding, setAdding] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [messageTarget, setMessageTarget] = useState<LinkedStudent | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -56,7 +68,7 @@ function TrackPage() {
     return () => { mounted = false; };
   }, [navigate]);
 
-  // Real-time refresh: re-load when any tracked student's nodes/sessions change
+  // Real-time refresh
   useEffect(() => {
     if (!userId || !students.length) return;
     const ids = new Set(students.map((s) => s.student_id));
@@ -87,30 +99,110 @@ function TrackPage() {
     const ids = (links || []).map((l) => l.student_id);
     if (!ids.length) { setStudents([]); return; }
 
-    const [{ data: profs }, { data: nodes }, { data: sess }] = await Promise.all([
+    // Expanded fetch — includes subject, cognitive_state per session for distribution
+    const [{ data: profs }, { data: nodes }, { data: sess }, { data: goals }] = await Promise.all([
       supabase.from("profiles").select("id, full_name, nickname, class_level").in("id", ids),
-      supabase.from("concept_nodes").select("user_id, concept, mastery_level").in("user_id", ids),
-      supabase.from("sessions").select("user_id, created_at, cognitive_state").in("user_id", ids).order("created_at", { ascending: false }),
+      supabase.from("concept_nodes").select("user_id, concept, mastery_level, subject").in("user_id", ids),
+      supabase.from("sessions").select("user_id, created_at, cognitive_state, topic, mastery_score, subject").in("user_id", ids).order("created_at", { ascending: false }).limit(200),
+      supabase.from("learning_goals" as any).select("id, user_id, title, completed").in("user_id", ids).limit(50),
     ]);
 
     const profMap = new Map((profs || []).map((p) => [p.id, p]));
-    const nodesByUser = new Map<string, { concept: string; mastery: number }[]>();
+    const nodesByUser = new Map<string, { concept: string; mastery: number; subject: string | null }[]>();
     (nodes || []).forEach((n) => {
       const arr = nodesByUser.get(n.user_id) || [];
-      arr.push({ concept: n.concept, mastery: n.mastery_level || 0 });
+      arr.push({ concept: n.concept, mastery: n.mastery_level || 0, subject: n.subject });
       nodesByUser.set(n.user_id, arr);
     });
-    const lastByUser = new Map<string, { created_at: string; state: string | null }>();
-    (sess || []).forEach((s) => {
-      if (!lastByUser.has(s.user_id)) lastByUser.set(s.user_id, { created_at: s.created_at, state: s.cognitive_state });
+    // Use plain any[] to avoid typeof-null issues
+    const sessByUser = new Map<string, any[]>(ids.map((id) => [id, []]));
+    (sess || []).forEach((s: any) => {
+      const arr = sessByUser.get(s.user_id) || [];
+      arr.push(s);
+      sessByUser.set(s.user_id, arr);
     });
+    const goalsByUser = new Map<string, any[]>(ids.map((id) => [id, []]));
+    ((goals as any[]) || []).forEach((g: any) => {
+      const arr = goalsByUser.get(g.user_id) || [];
+      arr.push(g);
+      goalsByUser.set(g.user_id, arr);
+    });
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     const result: LinkedStudent[] = (links || []).map((l) => {
       const p = profMap.get(l.student_id);
       const ns = nodesByUser.get(l.student_id) || [];
+      const userSess = sessByUser.get(l.student_id) || [];
+      const userGoals = (goalsByUser.get(l.student_id) || []) as any[];
       const avg = ns.length ? ns.reduce((a, n) => a + n.mastery, 0) / ns.length : 0;
-      const weakest = ns.length ? [...ns].sort((a, b) => a.mastery - b.mastery)[0].concept : null;
-      const last = lastByUser.get(l.student_id);
+      const sorted = [...ns].sort((a, b) => a.mastery - b.mastery);
+      const weakest = sorted[0]?.concept ?? null;
+      const last = userSess[0];
+
+      // Rich data —————————————————————————
+      // Subject mastery
+      const subjectMap = new Map<string, number[]>();
+      ns.forEach((n) => {
+        const subj = n.subject ?? "অন্যান্য";
+        (subjectMap.get(subj) ?? subjectMap.set(subj, []).get(subj)!).push(n.mastery);
+      });
+      const subjectMastery: SubjectMastery[] = [...subjectMap.entries()]
+        .map(([subject, ms]) => ({ subject, mastery: ms.reduce((a, b) => a + b, 0) / ms.length }))
+        .sort((a, b) => KNOWN_SUBJECTS.indexOf(a.subject) - KNOWN_SUBJECTS.indexOf(b.subject));
+
+      // 7-day sparkline
+      const sparkline7d: SparklineDay[] = [];
+      for (let i = 6; i >= 0; i--) {
+        const day = new Date(); day.setDate(day.getDate() - i); day.setHours(0, 0, 0, 0);
+        const nextDay = new Date(day); nextDay.setDate(nextDay.getDate() + 1);
+        const daySess = userSess.filter((s) => {
+          const t = new Date(s.created_at); return t >= day && t < nextDay;
+        });
+        const dayAvg = daySess.length ? daySess.reduce((a, s) => a + (s.mastery_score ?? 0), 0) / daySess.length : 0;
+        sparkline7d.push({ date: day.toLocaleDateString("bn-BD", { day: "numeric" }), sessions: daySess.length, avgMastery: dayAvg });
+      }
+
+      // Strengths & weaknesses
+      const strengthConcepts = [...ns].sort((a, b) => b.mastery - a.mastery).slice(0, 3);
+      const weakConcepts = [...ns].sort((a, b) => a.mastery - b.mastery).filter((n) => n.mastery < 0.6).slice(0, 3);
+
+      // Recent sessions
+      const recentSessions: RecentSession[] = userSess.slice(0, 5).map((s) => ({
+        topic: s.topic ?? "—",
+        cognitiveState: s.cognitive_state,
+        createdAt: s.created_at,
+      }));
+
+      // Cognitive distribution last 7 days
+      const recentSess = userSess.filter((s) => new Date(s.created_at) >= sevenDaysAgo);
+      const cognitiveDist: CognitiveDist = { focused: 0, confused: 0, overloaded: 0, disengaged: 0 };
+      recentSess.forEach((s) => {
+        const state = s.cognitive_state;
+        if (state === "focused" || state === "flow" || state === "mastery-ready") cognitiveDist.focused++;
+        else if (state === "confused") cognitiveDist.confused++;
+        else if (state === "overloaded") cognitiveDist.overloaded++;
+        else if (state === "disengaged") cognitiveDist.disengaged++;
+      });
+
+      // Learning goals
+      const learningGoals: LearningGoal[] = userGoals.map((g: any) => ({
+        id: g.id,
+        title: g.title,
+        completed: g.completed ?? false,
+      }));
+
+      const richData: RichStudentData = {
+        subjectMastery,
+        sparkline7d,
+        strengthConcepts,
+        weakConcepts,
+        recentSessions,
+        cognitiveDistribution7d: cognitiveDist,
+        learningGoals,
+      };
+
       return {
         link_id: l.id,
         student_id: l.student_id,
@@ -121,7 +213,8 @@ function TrackPage() {
         avgMastery: avg,
         weakest,
         lastSession: last?.created_at ?? null,
-        cognitiveState: last?.state ?? null,
+        cognitiveState: last?.cognitive_state ?? null,
+        richData,
       };
     });
     setStudents(result);
@@ -213,6 +306,35 @@ function TrackPage() {
           <p className="mt-1 text-sm text-white/50">শিক্ষার্থীর ৮-অক্ষরের কোড দিয়ে যোগ করো — তারপর তার অগ্রগতি real-time দেখতে পারবে</p>
         </motion.header>
 
+        {/* Comparison strip — when 2+ students */}
+        {students.length >= 2 && (
+          <section className="mb-6 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+            <p className="mb-3 text-[10px] uppercase tracking-wider text-white/30 font-bangla">তুলনা</p>
+            <div className="space-y-2.5">
+              {students.map((s) => {
+                const name = s.nickname || s.full_name || "Unnamed";
+                const avg = Math.round(s.avgMastery * 100);
+                const color = avg >= 70 ? "#10B981" : avg >= 40 ? "#F59E0B" : "#EF4444";
+                return (
+                  <div key={s.student_id} className="flex items-center gap-3">
+                    <div className="w-24 shrink-0 truncate text-xs text-white/60 font-bangla">{name}</div>
+                    <div className="flex-1 h-2 overflow-hidden rounded-full bg-white/5">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${avg}%` }}
+                        transition={{ duration: 0.6 }}
+                        className="h-full rounded-full"
+                        style={{ background: color }}
+                      />
+                    </div>
+                    <span className="w-8 shrink-0 text-right text-xs tabular-nums text-white/40">{avg}%</span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {/* Add by code */}
         <section className="mb-6 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
           <div className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-white/70">
@@ -258,15 +380,22 @@ function TrackPage() {
                 const name = s.nickname || s.full_name || "Unnamed";
                 const avg = Math.round(s.avgMastery * 100);
                 const stateInfo = s.cognitiveState ? STATE_LABELS[s.cognitiveState] : null;
+                const isExpanded = expandedId === s.student_id;
+
                 return (
                   <motion.li
                     key={s.link_id}
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, x: -10 }}
-                    className="group rounded-2xl border border-white/10 bg-white/[0.02] p-4 transition-[background-color,box-shadow] hover:bg-white/[0.04] hover:shadow-lg"
+                    className="group rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden transition-[background-color,box-shadow] hover:bg-white/[0.03]"
+                    style={{ boxShadow: isExpanded ? "0 0 30px rgba(245,158,11,0.06)" : undefined }}
                   >
-                    <div className="flex items-start gap-3">
+                    {/* Card header — always visible, click to expand */}
+                    <div
+                      className="flex cursor-pointer items-start gap-3 p-4"
+                      onClick={() => setExpandedId(isExpanded ? null : s.student_id)}
+                    >
                       <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-gradient-to-br from-amber-400 to-blue-500 text-base font-bold text-black">
                         {name.charAt(0).toUpperCase()}
                       </div>
@@ -303,13 +432,38 @@ function TrackPage() {
                           </p>
                         )}
                       </div>
-                      <button
-                        onClick={() => removeLink(s.link_id)}
-                        className="rounded-md p-1.5 text-red-400/70 opacity-0 transition-opacity hover:bg-red-500/10 hover:text-red-300 group-hover:opacity-100"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); removeLink(s.link_id); }}
+                          className="rounded-md p-1.5 text-red-400/70 opacity-0 transition-opacity hover:bg-red-500/10 hover:text-red-300 group-hover:opacity-100"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                        <span className="text-white/20">
+                          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </span>
+                      </div>
                     </div>
+
+                    {/* Expanded detail — animated via motion.div, no nested AnimatePresence */}
+                    <AnimatePresence initial={false}>
+                      {isExpanded && s.richData && (
+                        <motion.div
+                          key="detail"
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.25, ease: "easeInOut" }}
+                          className="overflow-hidden px-4 pb-4"
+                        >
+                          <StudentDetail
+                            data={s.richData}
+                            onMessage={() => setMessageTarget(s)}
+                            onPrint={() => window.print()}
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </motion.li>
                 );
               })}
@@ -317,6 +471,17 @@ function TrackPage() {
           </ul>
         )}
       </main>
+
+      {/* Parent message modal */}
+      {messageTarget && userId && (
+        <ParentMessageModal
+          open={!!messageTarget}
+          onClose={() => setMessageTarget(null)}
+          studentId={messageTarget.student_id}
+          studentName={messageTarget.nickname || messageTarget.full_name || "শিক্ষার্থী"}
+          parentId={userId}
+        />
+      )}
     </div>
   );
 }

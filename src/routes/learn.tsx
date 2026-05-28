@@ -924,6 +924,7 @@ function LearnPage() {
                 placeholder={phase === "socratic" ? "তোমার ব্যাখ্যা লেখো বা বলো…" : "আরো প্রশ্ন করো…"}
                 voiceDisabled={!online}
                 voiceDisabledMessage="ভয়েস ইনপুটের জন্য সংযোগ প্রয়োজন"
+                onKeystroke={typing.onKeystroke}
               />
             </>
           )}
