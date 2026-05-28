@@ -143,15 +143,7 @@ function LearnPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authed, search.topic]);
 
-  // Attention -> cognitive state override
-  useEffect(() => {
-    if (!attentionEnabled) { setAttentionOverride(null); return; }
-    if (attentionStatus === "no-face") setAttentionOverride("disengaged");
-    else if (attentionStatus === "looking-away") setAttentionOverride("confused");
-    else if (attentionStatus === "focused") setAttentionOverride("focused");
-    else if (attentionStatus === "stable") setAttentionOverride("focused");
-    else setAttentionOverride(null);
-  }, [attentionEnabled, attentionStatus]);
+  // Attention is now fused into useCognitiveMetrics via cognitiveExtra — no override needed.
 
   // autoscroll
   useEffect(() => {
@@ -775,13 +767,13 @@ function LearnPage() {
                 )}
                 {phase === "socratic" && (
                   <span className="text-[11px] px-2.5 py-1 rounded-full bg-[var(--accent-purple)]/15 border border-[var(--accent-purple)]/40 text-[var(--accent-purple)] flex items-center gap-1">
-                    <GraduationCap className="w-3 h-3" /> Socratic Mode
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-
+          {/* Attention engine: icon when off, widget when on */}
+          <AttentionWidget
+            enabled={attentionEnabled}
+            onConsentRequest={() => setShowConsent(true)}
+            onDisable={() => setAttentionEnabled(false)}
+            onSignal={(s) => { setAttentionStatus(s.status); setAttentionSnap({ faceMissingFor: s.faceMissingFor, awayCount30s: s.awayCount30s }); }}
+          />
           {/* Attention engine: icon when off, widget when on */}
           <AttentionWidget
             enabled={attentionEnabled}
