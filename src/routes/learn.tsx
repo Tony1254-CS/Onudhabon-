@@ -656,7 +656,7 @@ function LearnPage() {
         .from("concept_nodes")
         .select("mastery_level")
         .eq("user_id", userId)
-        .eq("subject", topic);
+        .eq("topic", topic);
       if (data && data.length) {
         const avg =
           data.reduce((s, r: any) => s + (r.mastery_level ?? 0), 0) / data.length;
@@ -666,7 +666,7 @@ function LearnPage() {
     setFinalScore(masteryScore);
 
     const sessionRecord = {
-      topic, subject: null, cognitive_state: cognitiveState,
+      topic, subject, cognitive_state: cognitiveState,
       mastery_score: masteryScore, messages, concepts,
       created_at: new Date().toISOString(),
     };
@@ -675,20 +675,21 @@ function LearnPage() {
     if (userId && online) {
       if (currentSessionId) {
         await supabase.from("sessions").update({
-          topic, subject: null, cognitive_state: cognitiveState,
+          topic, subject, cognitive_state: cognitiveState,
           mastery_score: masteryScore,
           messages: messages as any,
         }).eq("id", currentSessionId);
       } else {
         const { data } = await supabase.from("sessions").insert({
           user_id: userId,
-          topic, subject: null, cognitive_state: cognitiveState,
+          topic, subject, cognitive_state: cognitiveState,
           mastery_score: masteryScore,
           messages: messages as any,
         }).select("id").single();
         if (data?.id) setCurrentSessionId(data.id);
       }
     }
+  };
   };
 
   if (authed === null) return <div className="min-h-screen bg-[var(--bg-primary)]" />;
