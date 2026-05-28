@@ -568,6 +568,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      find_classroom_by_code: {
+        Args: { _code: string }
+        Returns: {
+          id: string
+          name: string
+          subject: string
+        }[]
+      }
       find_student_by_code: {
         Args: { _code: string }
         Returns: {
@@ -594,6 +602,11 @@ export type Database = {
       is_student_in_teacher_class: {
         Args: { _student_id: string; _teacher_id: string }
         Returns: boolean
+      }
+      start_intervention: { Args: { _id: string }; Returns: undefined }
+      submit_intervention_response: {
+        Args: { _id: string; _response: string }
+        Returns: undefined
       }
     }
     Enums: {

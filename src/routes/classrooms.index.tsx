@@ -97,7 +97,8 @@ function ClassroomsPage() {
     if (!userId || !code.trim()) return;
     setJoining(true);
     const c = code.trim().toUpperCase();
-    const { data: room } = await supabase.from("classrooms").select("*").eq("join_code", c).maybeSingle();
+    const { data: rows } = await supabase.rpc("find_classroom_by_code", { _code: c });
+    const room = Array.isArray(rows) ? rows[0] : null;
     if (!room) { setJoining(false); toast.error("ভুল কোড"); return; }
     const { error } = await supabase.from("classroom_members").insert({ classroom_id: room.id, student_id: userId });
     setJoining(false);
