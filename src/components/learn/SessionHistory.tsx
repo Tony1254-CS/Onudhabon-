@@ -8,6 +8,7 @@ import { toast } from "sonner";
 export type SessionRow = {
   id: string;
   topic: string | null;
+  subject: string | null;
   cognitive_state: string | null;
   mastery_score: number | null;
   messages: any;
