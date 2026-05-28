@@ -10,7 +10,7 @@ import { MindMap, type ExtractedConcept } from "@/components/learn/MindMap";
 import { CognitivePanel } from "@/components/learn/CognitivePanel";
 import { MessageBubble, TypingDots } from "@/components/learn/MessageBubble";
 import { ChatInput } from "@/components/learn/ChatInput";
-import { TopicInput } from "@/components/learn/TopicInput";
+import { TopicInput, SUBJECTS, type Subject } from "@/components/learn/TopicInput";
 import { ResultCard } from "@/components/learn/ResultCard";
 import { NotesPanel } from "@/components/learn/NotesPanel";
 import { QuizPanel } from "@/components/learn/QuizPanel";
