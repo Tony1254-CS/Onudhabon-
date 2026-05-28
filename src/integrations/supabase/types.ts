@@ -515,6 +515,7 @@ export type Database = {
           messages: Json | null
           subject: string | null
           topic: string | null
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -525,6 +526,7 @@ export type Database = {
           messages?: Json | null
           subject?: string | null
           topic?: string | null
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -535,6 +537,7 @@ export type Database = {
           messages?: Json | null
           subject?: string | null
           topic?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []

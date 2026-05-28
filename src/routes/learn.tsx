@@ -17,6 +17,7 @@ import { QuizPanel } from "@/components/learn/QuizPanel";
 import { ResourcesPanel } from "@/components/learn/ResourcesPanel";
 import { MasteryBurst } from "@/components/learn/MasteryBurst";
 import { AttentionWidget, AttentionConsentModal, type AttentionStatus } from "@/components/learn/AttentionWidget";
+import { SessionHistoryButton, type SessionRow } from "@/components/learn/SessionHistory";
 import { useChatStream, type ChatMsg } from "@/hooks/useChatStream";
 import { useCognitiveMetrics, type Signal, type CognitiveState } from "@/hooks/useCognitiveState";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
@@ -85,6 +86,8 @@ function LearnPage() {
   const [attentionOverride, setAttentionOverride] = useState<CognitiveState | null>(null);
 
   const [rightCollapsed, setRightCollapsed] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { send, streaming, provider } = useChatStream();
   const { supported: ttsSupported, speaking, speak, cancel: cancelSpeak, hasBanglaVoice } = useSpeech();
@@ -374,16 +377,75 @@ function LearnPage() {
     await loadConceptsForTopic(topic);
   };
 
+  // Create (or reuse) a sessions row so progress is saved as the chat unfolds —
+  // not only on "finish". Returns the row id.
+  const ensureSession = async (t: string): Promise<string | null> => {
+    if (currentSessionId) return currentSessionId;
+    if (!userId || !online) return null;
+    const { data, error } = await supabase
+      .from("sessions")
+      .insert({
+        user_id: userId,
+        topic: t,
+        subject: null,
+        cognitive_state: cognitiveState,
+        mastery_score: 0,
+        messages: [] as any,
+      })
+      .select("id")
+      .single();
+    if (error || !data) return null;
+    setCurrentSessionId(data.id);
+    return data.id;
+  };
+
   const startTeaching = async (t: string) => {
     setTopic(t);
     setPhase("teaching");
     setConcepts([]);
+    setCurrentSessionId(null);
     await loadConceptsForTopic(t);
+    await ensureSession(t);
     const userMsg: ChatMsg = { role: "user", content: `আমাকে "${t}" সম্পর্কে শেখাও।` };
     setMessages([userMsg]);
     setSignals((s) => [...s, { ts: Date.now(), type: "send", length: userMsg.content.length }]);
     streamReply([userMsg], t, "focused", true, "teaching", () => setShowTeachBack(true));
   };
+
+  // Resume a past session: restore topic, messages, and reuse the same DB row.
+  const resumeSession = async (s: SessionRow) => {
+    const t = s.topic || "সরাসরি চ্যাট";
+    setCurrentSessionId(s.id);
+    setTopic(t);
+    setPhase("teaching");
+    setShowTeachBack(false);
+    setFinalScore(null);
+    const msgs = Array.isArray(s.messages) ? (s.messages as any[]) : [];
+    setMessages(msgs);
+    setConcepts([]);
+    await loadConceptsForTopic(t);
+    toast.success(`"${t}" — যেখানে ছেড়েছিলে সেখান থেকে শুরু করো`);
+  };
+
+  // Debounced auto-save of in-progress chat so leaving the page never loses work.
+  useEffect(() => {
+    if (!currentSessionId || phase === "topic" || phase === "result") return;
+    if (!userId || !online) return;
+    if (streaming) return; // wait until the stream settles
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      supabase
+        .from("sessions")
+        .update({
+          topic,
+          cognitive_state: cognitiveState,
+          messages: messages as any,
+        })
+        .eq("id", currentSessionId);
+    }, 800);
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  }, [messages, streaming, currentSessionId, userId, online, topic, cognitiveState, phase]);
+
 
   // mode = "merge" : take the higher confidence (used in teaching to grow the map without ever auto-mastering)
   // mode = "verdict": authoritative — the AI Socratic verdict overwrites confidence (allows promotion to "strong" AND demotion).
@@ -601,12 +663,21 @@ function LearnPage() {
     await cacheSession(sessionRecord);
     await idbPut("concept_nodes", `topic_${topic}`, concepts);
     if (userId && online) {
-      await supabase.from("sessions").insert({
-        user_id: userId,
-        topic, subject: null, cognitive_state: cognitiveState,
-        mastery_score: masteryScore,
-        messages: messages as any,
-      });
+      if (currentSessionId) {
+        await supabase.from("sessions").update({
+          topic, subject: null, cognitive_state: cognitiveState,
+          mastery_score: masteryScore,
+          messages: messages as any,
+        }).eq("id", currentSessionId);
+      } else {
+        const { data } = await supabase.from("sessions").insert({
+          user_id: userId,
+          topic, subject: null, cognitive_state: cognitiveState,
+          mastery_score: masteryScore,
+          messages: messages as any,
+        }).select("id").single();
+        if (data?.id) setCurrentSessionId(data.id);
+      }
     }
   };
 
@@ -641,6 +712,11 @@ function LearnPage() {
                 <h2 className="font-bangla text-sm truncate">{topic}</h2>
               </div>
               <div className="flex items-center gap-2">
+                <SessionHistoryButton
+                  userId={userId}
+                  currentSessionId={currentSessionId}
+                  onResume={resumeSession}
+                />
                 {ttsSupported && (
                   <button
                     onClick={() => {
@@ -689,7 +765,15 @@ function LearnPage() {
           />
 
           {phase === "topic" ? (
-            <TopicInput
+            <>
+              <div className="absolute top-4 right-4 z-30">
+                <SessionHistoryButton
+                  userId={userId}
+                  currentSessionId={currentSessionId}
+                  onResume={resumeSession}
+                />
+              </div>
+              <TopicInput
               onPick={startTeaching}
               onDirectChat={() => startTeaching("সরাসরি চ্যাট")}
               onGenerateMap={async (t) => {
@@ -725,6 +809,7 @@ function LearnPage() {
                 }
               }}
             />
+            </>
           ) : (
             <>
               <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6">
