@@ -70,7 +70,9 @@ export function SessionHistoryButton({
         <span className="hidden sm:inline pr-1 font-bangla">ইতিহাস</span>
       </button>
 
+      {typeof document !== "undefined" && createPortal(
       <AnimatePresence>
+
         {open && (
           <>
             <motion.div
