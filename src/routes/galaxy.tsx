@@ -291,6 +291,8 @@ function GalaxyPage() {
                     <span>{meta.label}</span>
                     <span className="tabular-nums">{arr.length}</span>
                   </div>
+
+
                   {arr.length === 0 ? (
                     <p className="text-[10px] text-white/30">— none —</p>
                   ) : (
@@ -320,38 +322,46 @@ function GalaxyPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Bottom legend */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 px-5 py-2.5 rounded-full bg-[var(--bg-secondary)]/85 backdrop-blur-2xl border border-[var(--border)] text-[11px] font-bangla"
+        className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-1.5 px-5 py-2.5 rounded-2xl bg-[var(--bg-secondary)]/85 backdrop-blur-2xl border border-[var(--border)] text-[11px] font-bangla"
       >
-        <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-[#F59E0B]" style={{ boxShadow: "0 0 8px #F59E0Baa" }} />
-          আয়ত্ত করেছ
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-[#60A5FA]" style={{ boxShadow: "0 0 8px #60A5FAaa" }} />
-          ভঙ্গুর জ্ঞান
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-[#FB923C]" style={{ boxShadow: "0 0 8px #FB923Caa" }} />
-          পর্যালোচনা দরকার
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block w-4 h-px bg-[#FBBF24]" />
-          নির্ভরতা
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block w-4 h-px bg-[#EF4444]" style={{ boxShadow: "0 0 6px #EF4444aa" }} />
-          ভঙ্গুর ভিত্তি
-        </span>
-        <span className="hidden sm:inline text-[var(--text-secondary)]">
-          মোট: {counts.total} | আয়ত্ত: {counts.mastered} | ভঙ্গুর: {counts.fragile}
-        </span>
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#60A5FA]" style={{ boxShadow: "0 0 8px #60A5FAaa" }} />
+            পদার্থবিজ্ঞান কক্ষপথ
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#A78BFA]" style={{ boxShadow: "0 0 8px #A78BFAaa" }} />
+            রসায়ন কক্ষপথ
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#34D399]" style={{ boxShadow: "0 0 8px #34D399aa" }} />
+            জীববিজ্ঞান কক্ষপথ
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#F59E0B]" style={{ boxShadow: "0 0 8px #F59E0Baa" }} />
+            গণিত কক্ষপথ
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[10px] text-[var(--text-secondary)]">
+          <span className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" /> আয়ত্ত
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#60A5FA]" /> ভঙ্গুর
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-3 h-px bg-[#EF4444]" /> ভঙ্গুর ভিত্তি
+          </span>
+          <span>মোট: {counts.total} · আয়ত্ত: {counts.mastered} · ভঙ্গুর: {counts.fragile}</span>
+        </div>
       </motion.div>
+
+
 
       {/* Empty state */}
       {isEmpty && (

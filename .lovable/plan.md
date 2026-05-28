@@ -1,53 +1,48 @@
+
 ## Goal
 
-1. The "জনপ্রিয় বিষয়" chips at the bottom of the Learn tab should change based on the selected subject (গণিত / পদার্থবিজ্ঞান / রসায়ন / জীববিজ্ঞান / বাংলা / ইংরেজি / আইসিটি / অন্যান্য).
-2. Confirm the subject field flows correctly into the teacher dashboard, student progress page, classroom interventions, and Galaxy — and fix any place that still doesn't use it.
+Make the Galaxy view actually feel like a solar system: a glowing central sun with clearly visible **orbital rings**, planets traveling along those orbits, and a tilted 3D perspective so the rings read as depth — not the current flat top-down disk where everything collapses onto a single circle.
 
-## Part 1 — Subject-aware suggestions (TopicInput.tsx)
+Scope: visual/3D-only changes inside `src/components/galaxy/createGalaxy.ts` (plus tiny tweaks in `src/routes/galaxy.tsx` for camera framing & legend copy). No data/schema changes.
 
-Replace the single flat `SUGGESTED` array with a per-subject map:
+## Why the current view fails
 
-```ts
-const SUGGESTED_BY_SUBJECT: Record<Subject, string[]> = {
-  "গণিত":           ["দ্বিঘাত সমীকরণ", "ত্রিকোণমিতি", "সম্ভাব্যতা", "ক্যালকুলাস", "ভেক্টর"],
-  "পদার্থবিজ্ঞান":   ["তড়িৎ প্রবাহ", "নিউটনের সূত্র", "আলোর প্রতিফলন", "তরঙ্গ", "তাপগতিবিদ্যা"],
-  "রসায়ন":          ["রাসায়নিক বিক্রিয়া", "পর্যায় সারণি", "অম্ল ও ক্ষারক", "জৈব যৌগ", "মোলারিটি"],
-  "জীববিজ্ঞান":     ["কোষ বিভাজন", "সালোকসংশ্লেষণ", "জেনেটিক্স", "মানবদেহের সিস্টেম", "বিবর্তন"],
-  "বাংলা":          ["ক্রিয়াপদ", "সমাস", "সন্ধি", "ছন্দ", "অলংকার"],
-  "ইংরেজি":         ["Tenses", "Voice Change", "Narration", "Prepositions", "Essay Writing"],
-  "আইসিটি":         ["HTML বেসিক", "নেটওয়ার্কিং", "ডেটাবেস", "অ্যালগরিদম", "সাইবার নিরাপত্তা"],
-  "অন্যান্য":       ["সাধারণ জ্ঞান", "ইতিহাস", "ভূগোল", "অর্থনীতি", "নাগরিকতা"],
-};
-```
+- All planets end up on **one visible ring** because most existing `concept_nodes` rows still have `subject = null` / unknown → they all fall into the `_other` bucket and share one orbit at radius 24.
+- Camera sits almost top-down (`y=35, z=90`), so even the per-subject rings that do exist look like concentric flat circles, not orbits.
+- Orbit rings render at `opacity 0.18` with no glow → invisible against the red prerequisite lines, which dominate the frame.
+- No visual distinction between "the sun" and "a big mastered planet" — both are orange spheres of similar on-screen size.
 
-UI changes inside `TopicInput.tsx`:
-- Render `SUGGESTED_BY_SUBJECT[subject]` instead of the static `SUGGESTED`.
-- Update the section label dynamically: `"জনপ্রিয় টপিক · {subject}"`.
-- Clicking a chip calls `onPick(topic, subject)` with the currently selected subject (no longer pulls from a per-item `subject` like before).
-- Re-animate the chip list when `subject` changes (motion `key={subject}`) so the switch feels intentional.
+## Changes
 
-No other files change for Part 1.
+### 1. Orbits — make them the hero
+- Replace flat `RingGeometry` with a **glowing tube ring** (`TorusGeometry`, thin radius ~0.08, 256 segments) using `MeshBasicMaterial` + additive blending and `opacity ~0.55`. Add a second wider torus at lower opacity as a soft halo.
+- Give each subject orbit a **distinct tilt + slight elliptical offset** (shift pivot center on X by `radius * 0.06`) so rings visibly cross in 3D instead of stacking concentrically.
+- Add a faint **floating subject label** (CSS2D) anchored at the outer edge of each ring, in the subject's accent color.
+- Bucket unknown-subject stars: instead of dumping them all on one `_other` ring, **distribute them across the 4 known subject orbits** by hash of concept name. Keeps every orbit populated and visually balanced until backfill catches up.
 
-## Part 2 — Verify subject propagation everywhere
+### 2. The Sun — make it unmistakable
+- Bump core sphere radius `4.5 → 6`, add a slow rotating noise texture (procedural via shader material or simply two counter-rotating offset spheres with additive orange/yellow MeshBasic).
+- Add a **lens-flare sprite** (THREE.Sprite with radial-gradient canvas texture) facing the camera for the classic "sun glare".
+- Pulse the corona opacity ±15% on a 4s sine in the animate loop.
 
-The migration in the previous turn already backfills `subject` on `concept_nodes` and `sessions`, and `learn.tsx` now writes the canonical subject on every upsert. The read sites below already select `subject` and display it — they will populate automatically as new sessions are saved:
+### 3. Camera & framing
+- Default position `(0, 18, 95)` looking at origin with a ~12° downward pitch → orbits read as ellipses, not circles.
+- Initial `controls.autoRotateSpeed` lowered to `0.15` for a slow cinematic drift.
+- On first mount, run a 1.2s ease-in camera dolly from `(0, 60, 160)` → default position so the system "assembles" into view.
 
-- `src/routes/dashboard.tsx` — teacher dashboard: reads `sessions.subject` and `concept_nodes.subject`, used in `StudentList` and intervention panel labels. ✅ no code change.
-- `src/routes/student.tsx` — student progress: stats card "তুমি Nটি বিষয় অন্বেষণ করেছ", per-concept subject badge, sessions list "• {subject}". ✅ no code change.
-- `src/components/classroom/StudentInterventionsTab.tsx` — shows `iv.subject` on each intervention row. ✅ no code change.
-- `src/components/dashboard/InterventionPanel.tsx` — already carries `subject` through analysis → intervention insert. ✅ no code change.
-- `src/routes/galaxy.tsx` + `src/components/galaxy/GalaxySidebar.tsx` — group/filter by `concept_nodes.subject`. ✅ no code change.
+### 4. Planets — subtle polish (no data change)
+- Mastered (`gold`) planets get a thin **Saturn-style ring** (small TorusGeometry, tilted, low opacity gold).
+- Reduce per-planet glow halo from `size * 2.2` → `size * 1.6` so they stop bleeding into each other on dense orbits.
+- Prerequisite link lines: lower default opacity (`0.35 → 0.15`) and only draw fragile (red) links at full strength — eliminates the current red-spaghetti look.
 
-One small fix to keep things consistent:
-- `supabase/functions/extract-concepts/index.ts` and any other server function that inserts/upserts into `concept_nodes` should write the same `subject` value passed from the client (not the topic). Quick audit + patch only if they currently mirror topic into subject.
+### 5. Legend / route
+- In `galaxy.tsx`, update the bottom legend to mention "কক্ষপথ" (orbit) per subject with the 4 subject color dots, replacing the generic "নির্ভরতা / ভঙ্গুর ভিত্তি" entries (move those to a smaller secondary line).
 
 ## Out of scope
+- No DB changes, no backfilling subjects, no new tables.
+- Sidebar, top bar, detail panel, celebration burst — untouched.
+- No new dependencies.
 
-- Auto-detecting subject from free-text topic via AI.
-- Changing Galaxy / Dashboard visual layout.
-- Editing past rows beyond what the existing backfill migration already does.
-
-## Files touched
-
-- `src/components/learn/TopicInput.tsx` — per-subject suggestion map + dynamic label/animation.
-- `supabase/functions/extract-concepts/index.ts` — audit only; patch if it overwrites `subject` with topic.
+## Files
+- `src/components/galaxy/createGalaxy.ts` — orbits, sun, planets, camera, link styling (main work).
+- `src/routes/galaxy.tsx` — legend copy + initial camera framing only.
