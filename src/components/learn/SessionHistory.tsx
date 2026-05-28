@@ -8,6 +8,7 @@ import { toast } from "sonner";
 export type SessionRow = {
   id: string;
   topic: string | null;
+  subject: string | null;
   cognitive_state: string | null;
   mastery_score: number | null;
   messages: any;
@@ -42,7 +43,7 @@ export function SessionHistoryButton({
     setLoading(true);
     const { data, error } = await supabase
       .from("sessions")
-      .select("id, topic, cognitive_state, mastery_score, messages, created_at, updated_at")
+      .select("id, topic, subject, cognitive_state, mastery_score, messages, created_at, updated_at")
       .eq("user_id", userId)
       .order("updated_at", { ascending: false })
       .limit(30);
@@ -128,6 +129,11 @@ export function SessionHistoryButton({
                               <p className="font-bangla text-sm text-[var(--text-primary)] truncate">
                                 {r.topic || "সরাসরি চ্যাট"}
                               </p>
+                              {r.subject && (
+                                <p className="font-bangla text-[10px] uppercase tracking-[0.15em] text-[var(--accent-cold-blue)]/80 mt-0.5">
+                                  {r.subject}
+                                </p>
+                              )}
                               <div className="flex items-center gap-2 mt-1 text-[10px] text-[var(--text-secondary)] tabular-nums">
                                 <Clock className="w-3 h-3" />
                                 <span>{timeAgo(r.updated_at)}</span>

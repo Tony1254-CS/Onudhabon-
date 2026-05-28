@@ -10,7 +10,7 @@ import { MindMap, type ExtractedConcept } from "@/components/learn/MindMap";
 import { CognitivePanel } from "@/components/learn/CognitivePanel";
 import { MessageBubble, TypingDots } from "@/components/learn/MessageBubble";
 import { ChatInput } from "@/components/learn/ChatInput";
-import { TopicInput } from "@/components/learn/TopicInput";
+import { TopicInput, SUBJECTS, type Subject } from "@/components/learn/TopicInput";
 import { ResultCard } from "@/components/learn/ResultCard";
 import { NotesPanel } from "@/components/learn/NotesPanel";
 import { QuizPanel } from "@/components/learn/QuizPanel";
@@ -72,6 +72,11 @@ function LearnPage() {
 
   const [phase, setPhase] = useState<Phase>("topic");
   const [topic, setTopic] = useState("");
+  const [subject, setSubject] = useState<Subject>(() => {
+    if (typeof window === "undefined") return "অন্যান্য";
+    const saved = localStorage.getItem("learn_subject");
+    return (SUBJECTS as readonly string[]).includes(saved ?? "") ? (saved as Subject) : "অন্যান্য";
+  });
   const [messages, setMessages] = useState<(ChatMsg & { image?: string; cogState?: CognitiveState })[]>([]);
   const [signals, setSignals] = useState<Signal[]>([]);
   const [concepts, setConcepts] = useState<ExtractedConcept[]>([]);
@@ -168,7 +173,7 @@ function LearnPage() {
   }), [concepts]);
 
 
-  const loadConceptsForTopic = async (t: string) => {
+  const loadConceptsForTopic = async (t: string, subjectVal: Subject = subject) => {
     // Always try IDB first so it works offline / faster paint
     const cached = await idbGet<ExtractedConcept[]>("concept_nodes", `topic_${t}`);
     if (cached && Array.isArray(cached) && cached.length) setConcepts(cached);
@@ -178,7 +183,7 @@ function LearnPage() {
       .from("concept_nodes")
       .select(NODE_COLS)
       .eq("user_id", userId)
-      .eq("subject", t);
+      .eq("topic", t);
     if (!data) return;
     // Decay sweep: apply time-based mastery decay for any row not reviewed in 7+ days.
     const decayed: any[] = [];
@@ -189,7 +194,7 @@ function LearnPage() {
         : 0;
       if (days >= 7 && node.score > 0) {
         node = applyUpdate(node, { type: "decay", daysSince: days });
-        decayed.push({ user_id: userId, concept: r.concept, subject: t, ...toDbPatch(node) });
+        decayed.push({ user_id: userId, concept: r.concept, topic: t, subject: subjectVal, ...toDbPatch(node) });
       }
       return {
         key: r.concept as string,
@@ -212,12 +217,11 @@ function LearnPage() {
     }));
     if (decayed.length) {
       // Fire-and-forget: persist decayed scores so the next load reflects current state.
-      supabase.from("concept_nodes").upsert(decayed, { onConflict: "user_id,subject,concept" });
+      supabase.from("concept_nodes").upsert(decayed, { onConflict: "user_id,topic,concept" });
     }
     if (restored.length) {
-      // Enrich with NCTB curriculum prerequisite edges so the mind map shows
-      // directional dependencies between concepts.
-      const edges = await fetchEdgesForConcepts(restored.map((r) => r.name), t);
+      // Enrich with NCTB curriculum prerequisite edges, filtered by academic subject.
+      const edges = await fetchEdgesForConcepts(restored.map((r) => r.name), subjectVal);
       const enriched = mergeCurriculumPrereqs(restored, edges);
       setConcepts(enriched);
       // Refresh local cache for offline use
@@ -233,6 +237,7 @@ function LearnPage() {
     topicVal: string,
     items: ExtractedConcept[],
     kind: "discussion" | "explanation" = "discussion",
+    subjectVal: Subject = subject,
   ) => {
     if (!topicVal || !items.length) return;
     // Cache locally for full offline mind-map (UI bands use legacy 3-band).
@@ -240,13 +245,13 @@ function LearnPage() {
 
     if (!userId || !online) return;
 
-    // Fetch existing rows in one round-trip.
+    // Fetch existing rows in one round-trip (scoped by topic, not subject).
     const names = items.map((c) => c.name);
     const { data: existing } = await supabase
       .from("concept_nodes")
       .select(NODE_COLS)
       .eq("user_id", userId)
-      .eq("subject", topicVal)
+      .eq("topic", topicVal)
       .in("concept", names);
 
     const byName = new Map<string, any>();
@@ -271,7 +276,8 @@ function LearnPage() {
       return {
         user_id: userId,
         concept: c.name,
-        subject: topicVal,
+        topic: topicVal,
+        subject: subjectVal,
         ...toDbPatch(next),
         prerequisites: mergedPrereqs,
       };
@@ -282,7 +288,7 @@ function LearnPage() {
       const queueRaw = localStorage.getItem("galaxy_celebrations");
       const queue: string[] = queueRaw ? JSON.parse(queueRaw) : [];
       newlyMasteredNames.forEach((name) => {
-        queue.push(`${topicVal}::${name}`);
+        queue.push(`${subjectVal}::${name}`);
         toast.success(`🌟 নতুন তারা! "${name}" আয়ত্তে এসেছে`, {
           description: "তোমার জ্ঞানের মহাবিশ্বে যোগ হলো একটি উজ্জ্বল তারা।",
           duration: 4500,
@@ -294,24 +300,21 @@ function LearnPage() {
 
     await supabase
       .from("concept_nodes")
-      .upsert(upserts, { onConflict: "user_id,subject,concept" });
+      .upsert(upserts, { onConflict: "user_id,topic,concept" });
 
     // Re-load with dependency-aware propagation so the UI reflects fragile
     // chains caused by weak prerequisites.
-    await loadConceptsForTopic(topicVal);
+    await loadConceptsForTopic(topicVal, subjectVal);
   };
 
   // Apply quiz outcomes (one row per question) to the concept the question is about.
-  // Currently quizzes are topic-scoped; we attribute results to the topic itself
-  // plus any currently-tracked concepts as light reinforcement.
   const recordQuizOutcome = async (correctCount: number, total: number) => {
     if (!topic || !userId || !online || total === 0) return;
-    // Topic-level bump first (always present as a concept row).
     const { data: existing } = await supabase
       .from("concept_nodes")
       .select(NODE_COLS)
       .eq("user_id", userId)
-      .eq("subject", topic);
+      .eq("topic", topic);
     const byName = new Map<string, any>();
     (existing ?? []).forEach((r: any) => byName.set(r.concept, r));
 
@@ -320,21 +323,20 @@ function LearnPage() {
     );
     const upserts = targets.map((name) => {
       let node = fromDb(byName.get(name));
-      // Apply each question outcome sequentially: `correctCount` correct, the rest wrong.
       for (let i = 0; i < correctCount; i++) node = applyUpdate(node, { type: "quiz", correct: true });
       for (let i = 0; i < total - correctCount; i++) node = applyUpdate(node, { type: "quiz", correct: false });
-      return { user_id: userId, concept: name, subject: topic, ...toDbPatch(node) };
+      return { user_id: userId, concept: name, topic, subject, ...toDbPatch(node) };
     });
     await supabase
       .from("concept_nodes")
-      .upsert(upserts, { onConflict: "user_id,subject,concept" });
+      .upsert(upserts, { onConflict: "user_id,topic,concept" });
   };
 
   // Record exact misconceptions surfaced during Socratic evaluation.
   // For each concept the verdict marked as "gap", store the student's literal
   // explanation as the misconception statement, plus a short canonical tag.
   const recordMisconceptions = async (
-    topicVal: string,
+    _topicVal: string,
     verdicts: ExtractedConcept[],
     studentExplanation: string,
   ) => {
@@ -353,7 +355,7 @@ function LearnPage() {
       return {
         user_id: userId,
         concept: g.name,
-        subject: topicVal,
+        subject,
         statement: sentenceMatch || trimmed || g.name,
         tag,
         weakness_type: "conceptual",
@@ -371,7 +373,7 @@ function LearnPage() {
       .from("concept_nodes")
       .delete()
       .eq("user_id", userId)
-      .eq("subject", topic)
+      .eq("topic", topic)
       .eq("concept", name);
     // Re-sync with server so the map matches Supabase exactly
     await loadConceptsForTopic(topic);
@@ -379,7 +381,7 @@ function LearnPage() {
 
   // Create (or reuse) a sessions row so progress is saved as the chat unfolds —
   // not only on "finish". Returns the row id.
-  const ensureSession = async (t: string): Promise<string | null> => {
+  const ensureSession = async (t: string, subjectVal: Subject = subject): Promise<string | null> => {
     if (currentSessionId) return currentSessionId;
     if (!userId || !online) return null;
     const { data, error } = await supabase
@@ -387,7 +389,7 @@ function LearnPage() {
       .insert({
         user_id: userId,
         topic: t,
-        subject: null,
+        subject: subjectVal,
         cognitive_state: cognitiveState,
         mastery_score: 0,
         messages: [] as any,
@@ -399,13 +401,15 @@ function LearnPage() {
     return data.id;
   };
 
-  const startTeaching = async (t: string) => {
+  const startTeaching = async (t: string, subjectVal: Subject = subject) => {
     setTopic(t);
+    setSubject(subjectVal);
+    if (typeof window !== "undefined") localStorage.setItem("learn_subject", subjectVal);
     setPhase("teaching");
     setConcepts([]);
     setCurrentSessionId(null);
-    await loadConceptsForTopic(t);
-    await ensureSession(t);
+    await loadConceptsForTopic(t, subjectVal);
+    await ensureSession(t, subjectVal);
     const userMsg: ChatMsg = { role: "user", content: `আমাকে "${t}" সম্পর্কে শেখাও।` };
     setMessages([userMsg]);
     setSignals((s) => [...s, { ts: Date.now(), type: "send", length: userMsg.content.length }]);
@@ -415,15 +419,20 @@ function LearnPage() {
   // Resume a past session: restore topic, messages, and reuse the same DB row.
   const resumeSession = async (s: SessionRow) => {
     const t = s.topic || "সরাসরি চ্যাট";
+    const restoredSubject: Subject =
+      (SUBJECTS as readonly string[]).includes(s.subject ?? "")
+        ? (s.subject as Subject)
+        : "অন্যান্য";
     setCurrentSessionId(s.id);
     setTopic(t);
+    setSubject(restoredSubject);
     setPhase("teaching");
     setShowTeachBack(false);
     setFinalScore(null);
     const msgs = Array.isArray(s.messages) ? (s.messages as any[]) : [];
     setMessages(msgs);
     setConcepts([]);
-    await loadConceptsForTopic(t);
+    await loadConceptsForTopic(t, restoredSubject);
     toast.success(`"${t}" — যেখানে ছেড়েছিলে সেখান থেকে শুরু করো`);
   };
 
@@ -438,13 +447,14 @@ function LearnPage() {
         .from("sessions")
         .update({
           topic,
+          subject,
           cognitive_state: cognitiveState,
           messages: messages as any,
         })
         .eq("id", currentSessionId);
     }, 800);
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
-  }, [messages, streaming, currentSessionId, userId, online, topic, cognitiveState, phase]);
+  }, [messages, streaming, currentSessionId, userId, online, topic, subject, cognitiveState, phase]);
 
 
   // mode = "merge" : take the higher confidence (used in teaching to grow the map without ever auto-mastering)
@@ -646,7 +656,7 @@ function LearnPage() {
         .from("concept_nodes")
         .select("mastery_level")
         .eq("user_id", userId)
-        .eq("subject", topic);
+        .eq("topic", topic);
       if (data && data.length) {
         const avg =
           data.reduce((s, r: any) => s + (r.mastery_level ?? 0), 0) / data.length;
@@ -656,7 +666,7 @@ function LearnPage() {
     setFinalScore(masteryScore);
 
     const sessionRecord = {
-      topic, subject: null, cognitive_state: cognitiveState,
+      topic, subject, cognitive_state: cognitiveState,
       mastery_score: masteryScore, messages, concepts,
       created_at: new Date().toISOString(),
     };
@@ -665,14 +675,14 @@ function LearnPage() {
     if (userId && online) {
       if (currentSessionId) {
         await supabase.from("sessions").update({
-          topic, subject: null, cognitive_state: cognitiveState,
+          topic, subject, cognitive_state: cognitiveState,
           mastery_score: masteryScore,
           messages: messages as any,
         }).eq("id", currentSessionId);
       } else {
         const { data } = await supabase.from("sessions").insert({
           user_id: userId,
-          topic, subject: null, cognitive_state: cognitiveState,
+          topic, subject, cognitive_state: cognitiveState,
           mastery_score: masteryScore,
           messages: messages as any,
         }).select("id").single();
@@ -710,6 +720,20 @@ function LearnPage() {
               <div className="flex items-center gap-3 min-w-0">
                 <Sparkles className="w-4 h-4 text-[var(--accent-gold)] shrink-0" />
                 <h2 className="font-bangla text-sm truncate">{topic}</h2>
+                <select
+                  value={subject}
+                  onChange={(e) => {
+                    const s = e.target.value as Subject;
+                    setSubject(s);
+                    if (typeof window !== "undefined") localStorage.setItem("learn_subject", s);
+                  }}
+                  className="shrink-0 text-[11px] font-bangla bg-[var(--accent-blue)]/10 border border-[var(--accent-blue)]/40 text-[var(--accent-cold-blue)] rounded-full px-2 py-0.5 focus:outline-none"
+                  title="বিষয় পরিবর্তন করো"
+                >
+                  {SUBJECTS.map((s) => (
+                    <option key={s} value={s} className="bg-[var(--bg-primary)] text-[var(--text-primary)]">{s}</option>
+                  ))}
+                </select>
               </div>
               <div className="flex items-center gap-2">
                 <SessionHistoryButton
@@ -774,41 +798,44 @@ function LearnPage() {
                 />
               </div>
               <TopicInput
-              onPick={startTeaching}
-              onDirectChat={() => startTeaching("সরাসরি চ্যাট")}
-              onGenerateMap={async (t) => {
-                setTopic(t);
-                setPhase("teaching");
-                setConcepts([]);
-                await loadConceptsForTopic(t);
-                try {
-                  const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-mindmap`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` },
-                    body: JSON.stringify({ topic: t }),
-                  });
-                  if (!r.ok) throw new Error(String(r.status));
-                  const data = await r.json();
-                  const incoming: ExtractedConcept[] = [];
-                  for (const b of (data.branches ?? [])) {
-                    incoming.push({ name: b.name, confidence: "weak", related: (b.children ?? []).map((c: any) => c.name) });
-                    for (const c of (b.children ?? [])) {
-                      incoming.push({ name: c.name, confidence: "gap", related: [b.name] });
+                initialSubject={subject}
+                onPick={(t, s) => startTeaching(t, s)}
+                onDirectChat={(s) => startTeaching("সরাসরি চ্যাট", s)}
+                onGenerateMap={async (t, s) => {
+                  setTopic(t);
+                  setSubject(s);
+                  if (typeof window !== "undefined") localStorage.setItem("learn_subject", s);
+                  setPhase("teaching");
+                  setConcepts([]);
+                  await loadConceptsForTopic(t, s);
+                  try {
+                    const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-mindmap`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` },
+                      body: JSON.stringify({ topic: t }),
+                    });
+                    if (!r.ok) throw new Error(String(r.status));
+                    const data = await r.json();
+                    const incoming: ExtractedConcept[] = [];
+                    for (const b of (data.branches ?? [])) {
+                      incoming.push({ name: b.name, confidence: "weak", related: (b.children ?? []).map((c: any) => c.name) });
+                      for (const c of (b.children ?? [])) {
+                        incoming.push({ name: c.name, confidence: "gap", related: [b.name] });
+                      }
                     }
+                    if (incoming.length) {
+                      mergeConcepts(incoming);
+                      persistConcepts(t, incoming, "discussion", s);
+                    }
+                    const intro: ChatMsg = { role: "user", content: `"${t}" বিষয়ের mind-map তৈরি করেছি। এবার প্রতিটি ধারণা ধরে ধরে শেখাও।` };
+                    setMessages([intro]);
+                    streamReply([intro], t, "exploring", true, "teaching", () => setShowTeachBack(true));
+                  } catch {
+                    toast.error("Mind-map তৈরি ব্যর্থ — সরাসরি শেখা শুরু করছি।");
+                    startTeaching(t, s);
                   }
-                  if (incoming.length) {
-                    mergeConcepts(incoming);
-                    persistConcepts(t, incoming, "discussion");
-                  }
-                  const intro: ChatMsg = { role: "user", content: `"${t}" বিষয়ের mind-map তৈরি করেছি। এবার প্রতিটি ধারণা ধরে ধরে শেখাও।` };
-                  setMessages([intro]);
-                  streamReply([intro], t, "exploring", true, "teaching", () => setShowTeachBack(true));
-                } catch {
-                  toast.error("Mind-map তৈরি ব্যর্থ — সরাসরি শেখা শুরু করছি।");
-                  startTeaching(t);
-                }
-              }}
-            />
+                }}
+              />
             </>
           ) : (
             <>
