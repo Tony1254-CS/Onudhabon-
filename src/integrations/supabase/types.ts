@@ -141,6 +141,7 @@ export type Database = {
           retention_score: number
           state: string
           subject: string | null
+          topic: string | null
           understanding: number
           updated_at: string
           user_id: string
@@ -168,6 +169,7 @@ export type Database = {
           retention_score?: number
           state?: string
           subject?: string | null
+          topic?: string | null
           understanding?: number
           updated_at?: string
           user_id: string
@@ -195,6 +197,7 @@ export type Database = {
           retention_score?: number
           state?: string
           subject?: string | null
+          topic?: string | null
           understanding?: number
           updated_at?: string
           user_id?: string
