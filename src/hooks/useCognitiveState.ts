@@ -120,7 +120,7 @@ const RULES: CoachRule[] = [
   {
     priority: 90,
     match: (c) => c.state === "confused" && c.questionBurst >= 3,
-    build: () => ({
+    build: (c) => ({
       tip: "তুমি একই জিনিস বারবার জিজ্ঞেস করছ — মানে ভিত্তিতে একটা ফাঁক আছে। আগের ধাপে ফিরে যাই।",
       nextAction: "প্রয়োজনীয় ধারণা রিভিউ করো",
       reason: `${c.questionBurst}টি প্রশ্ন ১ মিনিটে`,
