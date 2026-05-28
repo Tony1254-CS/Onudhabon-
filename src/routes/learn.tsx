@@ -663,12 +663,21 @@ function LearnPage() {
     await cacheSession(sessionRecord);
     await idbPut("concept_nodes", `topic_${topic}`, concepts);
     if (userId && online) {
-      await supabase.from("sessions").insert({
-        user_id: userId,
-        topic, subject: null, cognitive_state: cognitiveState,
-        mastery_score: masteryScore,
-        messages: messages as any,
-      });
+      if (currentSessionId) {
+        await supabase.from("sessions").update({
+          topic, subject: null, cognitive_state: cognitiveState,
+          mastery_score: masteryScore,
+          messages: messages as any,
+        }).eq("id", currentSessionId);
+      } else {
+        const { data } = await supabase.from("sessions").insert({
+          user_id: userId,
+          topic, subject: null, cognitive_state: cognitiveState,
+          mastery_score: masteryScore,
+          messages: messages as any,
+        }).select("id").single();
+        if (data?.id) setCurrentSessionId(data.id);
+      }
     }
   };
 
