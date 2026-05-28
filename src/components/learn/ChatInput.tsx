@@ -7,8 +7,8 @@ import { toast } from "sonner";
 type AttachedFile = { name: string; size: number; content: string };
 
 export function ChatInput({
-  onSend, disabled, placeholder, voiceDisabled, voiceDisabledMessage,
-}: { onSend: (text: string, image?: string) => void; disabled?: boolean; placeholder?: string; voiceDisabled?: boolean; voiceDisabledMessage?: string }) {
+  onSend, disabled, placeholder, voiceDisabled, voiceDisabledMessage, onKeystroke,
+}: { onSend: (text: string, image?: string) => void; disabled?: boolean; placeholder?: string; voiceDisabled?: boolean; voiceDisabledMessage?: string; onKeystroke?: (isBackspace: boolean) => void }) {
   const [text, setText] = useState("");
   const [image, setImage] = useState<string | null>(null);
   const [file, setFile] = useState<AttachedFile | null>(null);
