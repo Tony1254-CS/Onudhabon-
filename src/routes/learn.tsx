@@ -767,19 +767,19 @@ function LearnPage() {
                 )}
                 {phase === "socratic" && (
                   <span className="text-[11px] px-2.5 py-1 rounded-full bg-[var(--accent-purple)]/15 border border-[var(--accent-purple)]/40 text-[var(--accent-purple)] flex items-center gap-1">
+                    <GraduationCap className="w-3 h-3" /> Socratic Mode
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Attention engine: icon when off, widget when on */}
           <AttentionWidget
             enabled={attentionEnabled}
             onConsentRequest={() => setShowConsent(true)}
             onDisable={() => setAttentionEnabled(false)}
             onSignal={(s) => { setAttentionStatus(s.status); setAttentionSnap({ faceMissingFor: s.faceMissingFor, awayCount30s: s.awayCount30s }); }}
-          />
-          {/* Attention engine: icon when off, widget when on */}
-          <AttentionWidget
-            enabled={attentionEnabled}
-            onConsentRequest={() => setShowConsent(true)}
-            onDisable={() => setAttentionEnabled(false)}
-            onSignal={(s) => setAttentionStatus(s.status)}
           />
           <AttentionConsentModal
             open={showConsent}
