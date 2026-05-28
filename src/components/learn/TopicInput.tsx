@@ -15,13 +15,17 @@ export const SUBJECTS = [
 
 export type Subject = (typeof SUBJECTS)[number];
 
-const SUGGESTED: { topic: string; subject: Subject }[] = [
-  { topic: "তড়িৎ প্রবাহ",       subject: "পদার্থবিজ্ঞান" },
-  { topic: "আলোর প্রতিফলন",     subject: "পদার্থবিজ্ঞান" },
-  { topic: "রাসায়নিক বিক্রিয়া", subject: "রসায়ন" },
-  { topic: "কোষ বিভাজন",        subject: "জীববিজ্ঞান" },
-  { topic: "নিউটনের সূত্র",     subject: "পদার্থবিজ্ঞান" },
-];
+const SUGGESTED_BY_SUBJECT: Record<Subject, string[]> = {
+  "গণিত":           ["দ্বিঘাত সমীকরণ", "ত্রিকোণমিতি", "সম্ভাব্যতা", "ক্যালকুলাস", "ভেক্টর"],
+  "পদার্থবিজ্ঞান":   ["তড়িৎ প্রবাহ", "নিউটনের সূত্র", "আলোর প্রতিফলন", "তরঙ্গ", "তাপগতিবিদ্যা"],
+  "রসায়ন":          ["রাসায়নিক বিক্রিয়া", "পর্যায় সারণি", "অম্ল ও ক্ষারক", "জৈব যৌগ", "মোলারিটি"],
+  "জীববিজ্ঞান":     ["কোষ বিভাজন", "সালোকসংশ্লেষণ", "জেনেটিক্স", "মানবদেহের সিস্টেম", "বিবর্তন"],
+  "বাংলা":          ["ক্রিয়াপদ", "সমাস", "সন্ধি", "ছন্দ", "অলংকার"],
+  "ইংরেজি":         ["Tenses", "Voice Change", "Narration", "Prepositions", "Essay Writing"],
+  "আইসিটি":         ["HTML বেসিক", "নেটওয়ার্কিং", "ডেটাবেস", "অ্যালগরিদম", "সাইবার নিরাপত্তা"],
+  "অন্যান্য":       ["সাধারণ জ্ঞান", "ইতিহাস", "ভূগোল", "অর্থনীতি", "নাগরিকতা"],
+};
+
 
 export function TopicInput({
   initialSubject,
@@ -121,23 +125,24 @@ export function TopicInput({
         </div>
 
         <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]/60 text-center mb-3">
-          জনপ্রিয় টপিক
+          জনপ্রিয় টপিক · <span className="text-[var(--accent-cold-blue)]">{subject}</span>
         </p>
-        <div className="flex flex-wrap justify-center gap-2">
-          {SUGGESTED.map((t, i) => (
+        <div key={subject} className="flex flex-wrap justify-center gap-2">
+          {SUGGESTED_BY_SUBJECT[subject].map((topic, i) => (
             <motion.button
-              key={t.topic}
+              key={topic}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + i * 0.05 }}
-              onClick={() => { setSubject(t.subject); onPick(t.topic, t.subject); }}
+              transition={{ delay: 0.05 + i * 0.04 }}
+              onClick={() => onPick(topic, subject)}
               className="px-4 py-2 rounded-full text-sm font-bangla border border-[var(--border)] hover:border-[var(--accent-blue)]/60 hover:bg-[var(--accent-blue)]/10 hover:text-[var(--accent-cold-blue)] transition-all"
-              title={t.subject}
+              title={subject}
             >
-              {t.topic}
+              {topic}
             </motion.button>
           ))}
         </div>
+
       </div>
     </motion.div>
   );
