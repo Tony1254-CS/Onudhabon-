@@ -373,7 +373,7 @@ function LearnPage() {
       .from("concept_nodes")
       .delete()
       .eq("user_id", userId)
-      .eq("subject", topic)
+      .eq("topic", topic)
       .eq("concept", name);
     // Re-sync with server so the map matches Supabase exactly
     await loadConceptsForTopic(topic);
@@ -381,7 +381,7 @@ function LearnPage() {
 
   // Create (or reuse) a sessions row so progress is saved as the chat unfolds —
   // not only on "finish". Returns the row id.
-  const ensureSession = async (t: string): Promise<string | null> => {
+  const ensureSession = async (t: string, subjectVal: Subject = subject): Promise<string | null> => {
     if (currentSessionId) return currentSessionId;
     if (!userId || !online) return null;
     const { data, error } = await supabase
@@ -389,7 +389,7 @@ function LearnPage() {
       .insert({
         user_id: userId,
         topic: t,
-        subject: null,
+        subject: subjectVal,
         cognitive_state: cognitiveState,
         mastery_score: 0,
         messages: [] as any,
@@ -401,13 +401,15 @@ function LearnPage() {
     return data.id;
   };
 
-  const startTeaching = async (t: string) => {
+  const startTeaching = async (t: string, subjectVal: Subject = subject) => {
     setTopic(t);
+    setSubject(subjectVal);
+    if (typeof window !== "undefined") localStorage.setItem("learn_subject", subjectVal);
     setPhase("teaching");
     setConcepts([]);
     setCurrentSessionId(null);
-    await loadConceptsForTopic(t);
-    await ensureSession(t);
+    await loadConceptsForTopic(t, subjectVal);
+    await ensureSession(t, subjectVal);
     const userMsg: ChatMsg = { role: "user", content: `আমাকে "${t}" সম্পর্কে শেখাও।` };
     setMessages([userMsg]);
     setSignals((s) => [...s, { ts: Date.now(), type: "send", length: userMsg.content.length }]);
@@ -417,15 +419,20 @@ function LearnPage() {
   // Resume a past session: restore topic, messages, and reuse the same DB row.
   const resumeSession = async (s: SessionRow) => {
     const t = s.topic || "সরাসরি চ্যাট";
+    const restoredSubject: Subject =
+      (SUBJECTS as readonly string[]).includes(s.subject ?? "")
+        ? (s.subject as Subject)
+        : "অন্যান্য";
     setCurrentSessionId(s.id);
     setTopic(t);
+    setSubject(restoredSubject);
     setPhase("teaching");
     setShowTeachBack(false);
     setFinalScore(null);
     const msgs = Array.isArray(s.messages) ? (s.messages as any[]) : [];
     setMessages(msgs);
     setConcepts([]);
-    await loadConceptsForTopic(t);
+    await loadConceptsForTopic(t, restoredSubject);
     toast.success(`"${t}" — যেখানে ছেড়েছিলে সেখান থেকে শুরু করো`);
   };
 
