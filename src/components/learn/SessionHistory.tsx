@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { History, X, Clock, BookOpen, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,7 +70,9 @@ export function SessionHistoryButton({
         <span className="hidden sm:inline pr-1 font-bangla">ইতিহাস</span>
       </button>
 
+      {typeof document !== "undefined" && createPortal(
       <AnimatePresence>
+
         {open && (
           <>
             <motion.div
@@ -159,7 +162,8 @@ export function SessionHistoryButton({
             </motion.aside>
           </>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body)}
     </>
   );
 }
