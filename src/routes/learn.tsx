@@ -962,7 +962,7 @@ function LearnPage() {
                   id: "state",
                   label: "State",
                   icon: <Activity className="w-3.5 h-3.5" />,
-                  content: <CognitivePanel state={cognitiveState} signals={signals} mode={phase === "socratic" ? "socratic" : "teaching"} />,
+                  content: <CognitivePanel state={cognitiveState} signals={signals} mode={phase === "socratic" ? "socratic" : "teaching"} extra={cognitiveExtra} onAction={handleCoachAction} />,
                 },
               ]}
             />
