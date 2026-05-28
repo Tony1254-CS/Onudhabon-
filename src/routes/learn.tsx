@@ -632,6 +632,32 @@ function LearnPage() {
     setMessages((prev) => [...prev, promptMsg]);
   };
 
+  const handleCoachAction = (id: CoachActionId) => {
+    switch (id) {
+      case "break-timer":
+        toast("৫ মিনিটের বিরতি — চোখ বন্ধ করে শ্বাস নাও।", { duration: 5000 });
+        break;
+      case "switch-socratic":
+        if (phase === "teaching") enterSocratic();
+        break;
+      case "review-prereq":
+      case "replay-last":
+        toast("আগের ধাপে ফিরে যাচ্ছি…");
+        break;
+      case "ask-explain":
+        toast("তোমার ভাষায় বুঝিয়ে বলো — আমি শুনছি।");
+        break;
+      case "challenge":
+      case "stretch":
+        toast("নতুন চ্যালেঞ্জ আসছে…");
+        break;
+      case "ground-check":
+        toast("একটু থামো — মূল ধারণাটা আবার দেখি।");
+        break;
+    }
+  };
+
+
   const [finalScore, setFinalScore] = useState<number | null>(null);
 
   const finish = async () => {
