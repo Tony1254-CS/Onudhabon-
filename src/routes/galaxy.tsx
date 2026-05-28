@@ -292,7 +292,7 @@ function GalaxyPage() {
                     <span className="tabular-nums">{arr.length}</span>
                   </div>
 
-                  </div>
+
                   {arr.length === 0 ? (
                     <p className="text-[10px] text-white/30">— none —</p>
                   ) : (
