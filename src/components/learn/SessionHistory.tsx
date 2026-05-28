@@ -162,7 +162,8 @@ export function SessionHistoryButton({
             </motion.aside>
           </>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body)}
     </>
   );
 }
