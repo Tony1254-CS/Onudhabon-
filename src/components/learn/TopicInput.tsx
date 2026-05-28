@@ -125,23 +125,24 @@ export function TopicInput({
         </div>
 
         <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]/60 text-center mb-3">
-          জনপ্রিয় টপিক
+          জনপ্রিয় টপিক · <span className="text-[var(--accent-cold-blue)]">{subject}</span>
         </p>
-        <div className="flex flex-wrap justify-center gap-2">
-          {SUGGESTED.map((t, i) => (
+        <div key={subject} className="flex flex-wrap justify-center gap-2">
+          {SUGGESTED_BY_SUBJECT[subject].map((topic, i) => (
             <motion.button
-              key={t.topic}
+              key={topic}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + i * 0.05 }}
-              onClick={() => { setSubject(t.subject); onPick(t.topic, t.subject); }}
+              transition={{ delay: 0.05 + i * 0.04 }}
+              onClick={() => onPick(topic, subject)}
               className="px-4 py-2 rounded-full text-sm font-bangla border border-[var(--border)] hover:border-[var(--accent-blue)]/60 hover:bg-[var(--accent-blue)]/10 hover:text-[var(--accent-cold-blue)] transition-all"
-              title={t.subject}
+              title={subject}
             >
-              {t.topic}
+              {topic}
             </motion.button>
           ))}
         </div>
+
       </div>
     </motion.div>
   );
