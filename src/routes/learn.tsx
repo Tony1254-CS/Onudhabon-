@@ -237,6 +237,7 @@ function LearnPage() {
     topicVal: string,
     items: ExtractedConcept[],
     kind: "discussion" | "explanation" = "discussion",
+    subjectVal: Subject = subject,
   ) => {
     if (!topicVal || !items.length) return;
     // Cache locally for full offline mind-map (UI bands use legacy 3-band).
@@ -244,13 +245,13 @@ function LearnPage() {
 
     if (!userId || !online) return;
 
-    // Fetch existing rows in one round-trip.
+    // Fetch existing rows in one round-trip (scoped by topic, not subject).
     const names = items.map((c) => c.name);
     const { data: existing } = await supabase
       .from("concept_nodes")
       .select(NODE_COLS)
       .eq("user_id", userId)
-      .eq("subject", topicVal)
+      .eq("topic", topicVal)
       .in("concept", names);
 
     const byName = new Map<string, any>();
@@ -275,7 +276,8 @@ function LearnPage() {
       return {
         user_id: userId,
         concept: c.name,
-        subject: topicVal,
+        topic: topicVal,
+        subject: subjectVal,
         ...toDbPatch(next),
         prerequisites: mergedPrereqs,
       };
@@ -286,7 +288,7 @@ function LearnPage() {
       const queueRaw = localStorage.getItem("galaxy_celebrations");
       const queue: string[] = queueRaw ? JSON.parse(queueRaw) : [];
       newlyMasteredNames.forEach((name) => {
-        queue.push(`${topicVal}::${name}`);
+        queue.push(`${subjectVal}::${name}`);
         toast.success(`🌟 নতুন তারা! "${name}" আয়ত্তে এসেছে`, {
           description: "তোমার জ্ঞানের মহাবিশ্বে যোগ হলো একটি উজ্জ্বল তারা।",
           duration: 4500,
@@ -298,24 +300,21 @@ function LearnPage() {
 
     await supabase
       .from("concept_nodes")
-      .upsert(upserts, { onConflict: "user_id,subject,concept" });
+      .upsert(upserts, { onConflict: "user_id,topic,concept" });
 
     // Re-load with dependency-aware propagation so the UI reflects fragile
     // chains caused by weak prerequisites.
-    await loadConceptsForTopic(topicVal);
+    await loadConceptsForTopic(topicVal, subjectVal);
   };
 
   // Apply quiz outcomes (one row per question) to the concept the question is about.
-  // Currently quizzes are topic-scoped; we attribute results to the topic itself
-  // plus any currently-tracked concepts as light reinforcement.
   const recordQuizOutcome = async (correctCount: number, total: number) => {
     if (!topic || !userId || !online || total === 0) return;
-    // Topic-level bump first (always present as a concept row).
     const { data: existing } = await supabase
       .from("concept_nodes")
       .select(NODE_COLS)
       .eq("user_id", userId)
-      .eq("subject", topic);
+      .eq("topic", topic);
     const byName = new Map<string, any>();
     (existing ?? []).forEach((r: any) => byName.set(r.concept, r));
 
@@ -324,14 +323,13 @@ function LearnPage() {
     );
     const upserts = targets.map((name) => {
       let node = fromDb(byName.get(name));
-      // Apply each question outcome sequentially: `correctCount` correct, the rest wrong.
       for (let i = 0; i < correctCount; i++) node = applyUpdate(node, { type: "quiz", correct: true });
       for (let i = 0; i < total - correctCount; i++) node = applyUpdate(node, { type: "quiz", correct: false });
-      return { user_id: userId, concept: name, subject: topic, ...toDbPatch(node) };
+      return { user_id: userId, concept: name, topic, subject, ...toDbPatch(node) };
     });
     await supabase
       .from("concept_nodes")
-      .upsert(upserts, { onConflict: "user_id,subject,concept" });
+      .upsert(upserts, { onConflict: "user_id,topic,concept" });
   };
 
   // Record exact misconceptions surfaced during Socratic evaluation.
