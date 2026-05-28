@@ -1,41 +1,53 @@
-## Problem
+## Goal
 
-In Galaxy, planets are grouped by `concept_nodes.subject` into orbital rings. Today that column is empty / wrong because in `src/routes/learn.tsx` we pass the granular **topic** string (e.g. "তড়িৎ প্রবাহ") into the `subject` field of every upsert. Sessions also write `subject: null`. So Galaxy has nothing to group on and the "Mastered / Fragile / Review" sidebar can't filter by subject either.
+1. The "জনপ্রিয় বিষয়" chips at the bottom of the Learn tab should change based on the selected subject (গণিত / পদার্থবিজ্ঞান / রসায়ন / জীববিজ্ঞান / বাংলা / ইংরেজি / আইসিটি / অন্যান্য).
+2. Confirm the subject field flows correctly into the teacher dashboard, student progress page, classroom interventions, and Galaxy — and fix any place that still doesn't use it.
 
-Right fix: ask for the **subject** in the Learn tab and store `subject` and `topic` as two distinct things.
+## Part 1 — Subject-aware suggestions (TopicInput.tsx)
 
-## What changes (UX)
+Replace the single flat `SUGGESTED` array with a per-subject map:
 
-In the Learn tab's TopicInput (the "আজ কী শিখতে চাও?" screen), above the text input add a compact subject chooser:
+```ts
+const SUGGESTED_BY_SUBJECT: Record<Subject, string[]> = {
+  "গণিত":           ["দ্বিঘাত সমীকরণ", "ত্রিকোণমিতি", "সম্ভাব্যতা", "ক্যালকুলাস", "ভেক্টর"],
+  "পদার্থবিজ্ঞান":   ["তড়িৎ প্রবাহ", "নিউটনের সূত্র", "আলোর প্রতিফলন", "তরঙ্গ", "তাপগতিবিদ্যা"],
+  "রসায়ন":          ["রাসায়নিক বিক্রিয়া", "পর্যায় সারণি", "অম্ল ও ক্ষারক", "জৈব যৌগ", "মোলারিটি"],
+  "জীববিজ্ঞান":     ["কোষ বিভাজন", "সালোকসংশ্লেষণ", "জেনেটিক্স", "মানবদেহের সিস্টেম", "বিবর্তন"],
+  "বাংলা":          ["ক্রিয়াপদ", "সমাস", "সন্ধি", "ছন্দ", "অলংকার"],
+  "ইংরেজি":         ["Tenses", "Voice Change", "Narration", "Prepositions", "Essay Writing"],
+  "আইসিটি":         ["HTML বেসিক", "নেটওয়ার্কিং", "ডেটাবেস", "অ্যালগরিদম", "সাইবার নিরাপত্তা"],
+  "অন্যান্য":       ["সাধারণ জ্ঞান", "ইতিহাস", "ভূগোল", "অর্থনীতি", "নাগরিকতা"],
+};
+```
 
-- গণিত (Math)
-- পদার্থবিজ্ঞান (Physics)
-- রসায়ন (Chemistry)
-- জীববিজ্ঞান (Biology)
-- বাংলা, ইংরেজি, আইসিটি, অন্যান্য (secondary row)
+UI changes inside `TopicInput.tsx`:
+- Render `SUGGESTED_BY_SUBJECT[subject]` instead of the static `SUGGESTED`.
+- Update the section label dynamically: `"জনপ্রিয় টপিক · {subject}"`.
+- Clicking a chip calls `onPick(topic, subject)` with the currently selected subject (no longer pulls from a per-item `subject` like before).
+- Re-animate the chip list when `subject` changes (motion `key={subject}`) so the switch feels intentional.
 
-User must pick a subject before "শেখা শুরু করো" / Mind-Map / Direct chat is enabled (default to last-used subject, persisted in `localStorage`). The chosen subject is shown as a small pill at the top of the chat header during the session, and is editable from there.
+No other files change for Part 1.
 
-## What changes (data)
+## Part 2 — Verify subject propagation everywhere
 
-- `learn.tsx` keeps a new `subject` state alongside `topic`.
-- All `concept_nodes` upserts (decay path, post-message extraction, mind-map path, finish path) use `subject: subject` instead of `subject: topic`. `onConflict: "user_id,subject,concept"` stays the same — that's exactly why we need a stable subject.
-- `sessions` insert/update writes `subject: subject` instead of `null`, so SessionHistory and teacher views show the subject too.
-- Galaxy and GalaxySidebar already read `subject` — no change needed there; orbits will populate automatically once data has real subjects.
+The migration in the previous turn already backfills `subject` on `concept_nodes` and `sessions`, and `learn.tsx` now writes the canonical subject on every upsert. The read sites below already select `subject` and display it — they will populate automatically as new sessions are saved:
 
-## Backfill
+- `src/routes/dashboard.tsx` — teacher dashboard: reads `sessions.subject` and `concept_nodes.subject`, used in `StudentList` and intervention panel labels. ✅ no code change.
+- `src/routes/student.tsx` — student progress: stats card "তুমি Nটি বিষয় অন্বেষণ করেছ", per-concept subject badge, sessions list "• {subject}". ✅ no code change.
+- `src/components/classroom/StudentInterventionsTab.tsx` — shows `iv.subject` on each intervention row. ✅ no code change.
+- `src/components/dashboard/InterventionPanel.tsx` — already carries `subject` through analysis → intervention insert. ✅ no code change.
+- `src/routes/galaxy.tsx` + `src/components/galaxy/GalaxySidebar.tsx` — group/filter by `concept_nodes.subject`. ✅ no code change.
 
-One migration to backfill existing rows where `subject` looks like a topic (any non-null value not in our canonical subject list) — set them to `'অন্যান্য'` so existing data still groups cleanly instead of producing one orbit per topic. Same for `sessions.subject` where null and a `concept_nodes` row exists for the same topic.
-
-## Files touched
-
-- `src/components/learn/TopicInput.tsx` — add subject selector, change `onPick` signature to `(topic, subject)`; same for `onDirectChat` / `onGenerateMap`.
-- `src/routes/learn.tsx` — add `subject` state, persist to localStorage, thread into every `concept_nodes` and `sessions` write, show subject pill in header.
-- `supabase/migrations/...` — one backfill migration mapping legacy topic-as-subject rows to `'অন্যান্য'`.
-
-No changes to galaxy code, Supabase functions, or RLS.
+One small fix to keep things consistent:
+- `supabase/functions/extract-concepts/index.ts` and any other server function that inserts/upserts into `concept_nodes` should write the same `subject` value passed from the client (not the topic). Quick audit + patch only if they currently mirror topic into subject.
 
 ## Out of scope
 
-- Auto-detecting subject from the topic via AI (could be a follow-up).
-- Changing the Galaxy UI itself.
+- Auto-detecting subject from free-text topic via AI.
+- Changing Galaxy / Dashboard visual layout.
+- Editing past rows beyond what the existing backfill migration already does.
+
+## Files touched
+
+- `src/components/learn/TopicInput.tsx` — per-subject suggestion map + dynamic label/animation.
+- `supabase/functions/extract-concepts/index.ts` — audit only; patch if it overwrites `subject` with topic.
