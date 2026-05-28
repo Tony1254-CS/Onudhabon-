@@ -712,6 +712,11 @@ function LearnPage() {
                 <h2 className="font-bangla text-sm truncate">{topic}</h2>
               </div>
               <div className="flex items-center gap-2">
+                <SessionHistoryButton
+                  userId={userId}
+                  currentSessionId={currentSessionId}
+                  onResume={resumeSession}
+                />
                 {ttsSupported && (
                   <button
                     onClick={() => {
