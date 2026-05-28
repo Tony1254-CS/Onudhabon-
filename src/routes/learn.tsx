@@ -173,7 +173,7 @@ function LearnPage() {
   }), [concepts]);
 
 
-  const loadConceptsForTopic = async (t: string) => {
+  const loadConceptsForTopic = async (t: string, subjectVal: Subject = subject) => {
     // Always try IDB first so it works offline / faster paint
     const cached = await idbGet<ExtractedConcept[]>("concept_nodes", `topic_${t}`);
     if (cached && Array.isArray(cached) && cached.length) setConcepts(cached);
@@ -183,7 +183,7 @@ function LearnPage() {
       .from("concept_nodes")
       .select(NODE_COLS)
       .eq("user_id", userId)
-      .eq("subject", t);
+      .eq("topic", t);
     if (!data) return;
     // Decay sweep: apply time-based mastery decay for any row not reviewed in 7+ days.
     const decayed: any[] = [];
@@ -194,7 +194,7 @@ function LearnPage() {
         : 0;
       if (days >= 7 && node.score > 0) {
         node = applyUpdate(node, { type: "decay", daysSince: days });
-        decayed.push({ user_id: userId, concept: r.concept, subject: t, ...toDbPatch(node) });
+        decayed.push({ user_id: userId, concept: r.concept, topic: t, subject: subjectVal, ...toDbPatch(node) });
       }
       return {
         key: r.concept as string,
@@ -217,12 +217,11 @@ function LearnPage() {
     }));
     if (decayed.length) {
       // Fire-and-forget: persist decayed scores so the next load reflects current state.
-      supabase.from("concept_nodes").upsert(decayed, { onConflict: "user_id,subject,concept" });
+      supabase.from("concept_nodes").upsert(decayed, { onConflict: "user_id,topic,concept" });
     }
     if (restored.length) {
-      // Enrich with NCTB curriculum prerequisite edges so the mind map shows
-      // directional dependencies between concepts.
-      const edges = await fetchEdgesForConcepts(restored.map((r) => r.name), t);
+      // Enrich with NCTB curriculum prerequisite edges, filtered by academic subject.
+      const edges = await fetchEdgesForConcepts(restored.map((r) => r.name), subjectVal);
       const enriched = mergeCurriculumPrereqs(restored, edges);
       setConcepts(enriched);
       // Refresh local cache for offline use
