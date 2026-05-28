@@ -1,21 +1,24 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { Activity, Clock, Gauge, History, MessageCircle, Sparkles, Wind } from "lucide-react";
-import { type CognitiveState, STATE_META, useCognitiveMetrics, type Signal } from "@/hooks/useCognitiveState";
+import { Activity, Clock, Eye, Gauge, History, Keyboard, MessageCircle, Sparkles, Wind } from "lucide-react";
+import { type CognitiveState, STATE_META, useCognitiveMetrics, type Signal, type CognitiveExtra, type CoachActionId } from "@/hooks/useCognitiveState";
 
 export function CognitivePanel({
   state,
   signals,
   mode = "teaching",
+  extra,
   onSuggestBreak,
+  onAction,
 }: {
   state: CognitiveState;
   signals?: Signal[];
   mode?: "teaching" | "socratic";
+  extra?: CognitiveExtra;
   onSuggestBreak?: () => void;
+  onAction?: (id: CoachActionId) => void;
 }) {
-  const metrics = useCognitiveMetrics(signals ?? [], mode);
-  // Prefer external override (e.g. attention engine) but enrich with live metrics
+  const metrics = useCognitiveMetrics(signals ?? [], mode, extra);
   const active: CognitiveState = state ?? metrics.state;
   const meta = STATE_META[active];
 
@@ -52,7 +55,6 @@ export function CognitivePanel({
           </div>
         </div>
 
-        {/* Coaching message */}
         <AnimatePresence mode="wait">
           <motion.p
             key={meta.tagline}
@@ -66,7 +68,18 @@ export function CognitivePanel({
         </AnimatePresence>
       </div>
 
-      {/* LIVE TIP card */}
+      {/* SIGNALS — what the AI is actually seeing */}
+      <div className="relative rounded-2xl border border-white/10 bg-black/30 p-3">
+        <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-white/50">এখন কী দেখছি</p>
+        <div className="grid grid-cols-2 gap-2">
+          <SignalChip icon={<Eye className="w-3 h-3" />} label="চোখ" value={metrics.signals.eyes} color={meta.color} />
+          <SignalChip icon={<Keyboard className="w-3 h-3" />} label="টাইপ" value={metrics.signals.typing} color={meta.color} />
+          <SignalChip icon={<Clock className="w-3 h-3" />} label="গতি" value={metrics.signals.pace} color={meta.color} />
+          <SignalChip icon={<Activity className="w-3 h-3" />} label="ট্রেন্ড" value={metrics.signals.trend} color={meta.color} />
+        </div>
+      </div>
+
+      {/* LIVE TIP — coach voice + actions */}
       <motion.div
         layout
         className="relative rounded-2xl border p-3.5"
@@ -77,7 +90,7 @@ export function CognitivePanel({
       >
         <div className="flex items-center gap-2 mb-1.5">
           <Sparkles className="w-3.5 h-3.5" style={{ color: meta.color }} />
-          <p className="text-[10px] uppercase tracking-[0.16em] text-white/60">এখন কী করবে</p>
+          <p className="text-[10px] uppercase tracking-[0.16em] text-white/60">কোচ বলছে</p>
         </div>
         <AnimatePresence mode="wait">
           <motion.p
@@ -90,17 +103,32 @@ export function CognitivePanel({
             {metrics.tip}
           </motion.p>
         </AnimatePresence>
-        <div className="mt-2.5 flex items-center justify-between gap-2">
-          <span className="text-[11px] text-white/60 truncate">→ {metrics.nextAction}</span>
-          {(active === "overloaded" || active === "disengaged") && onSuggestBreak && (
-            <button
-              onClick={onSuggestBreak}
-              className="shrink-0 rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] text-white/85 hover:bg-white/10"
-            >
-              বিরতি নাও
-            </button>
-          )}
-        </div>
+        <p className="mt-2 text-[10.5px] text-white/55">কেন: {metrics.reason}</p>
+
+        {/* Actions */}
+        {(metrics.actions.length > 0 || (active === "overloaded" || active === "disengaged")) && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {metrics.actions.map((a) => (
+              <button
+                key={a.id}
+                onClick={() => onAction?.(a.id)}
+                className="rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-colors hover:bg-white/10"
+                style={{ borderColor: `${meta.color}55`, color: meta.color, background: `${meta.color}10` }}
+              >
+                {a.label}
+              </button>
+            ))}
+            {(active === "overloaded" || active === "disengaged") && onSuggestBreak && !metrics.actions.some((a) => a.id === "break-timer") && (
+              <button
+                onClick={onSuggestBreak}
+                className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] text-white/85 hover:bg-white/10"
+              >
+                বিরতি নাও
+              </button>
+            )}
+          </div>
+        )}
+        <p className="mt-2 text-[10px] text-white/40">→ {metrics.nextAction}</p>
       </motion.div>
 
       {/* METRICS GRID */}
@@ -111,7 +139,7 @@ export function CognitivePanel({
         <Metric icon={<Clock className="w-3 h-3" />} label="ছন্দ" value={metrics.cadenceSec ? `${metrics.cadenceSec.toFixed(0)}s` : "—"} color={meta.color} />
       </div>
 
-      {/* Pulse waveform — visual heartbeat */}
+      {/* Pulse waveform */}
       <div className="relative rounded-2xl border border-white/10 bg-black/30 p-3">
         <p className="text-[10px] uppercase tracking-[0.16em] text-white/50 mb-2">মনোযোগের স্পন্দন</p>
         <Waveform color={meta.color} intensity={metrics.flowScore / 100} />
@@ -122,7 +150,7 @@ export function CognitivePanel({
         </div>
       </div>
 
-      {/* TIMELINE — recent state transitions */}
+      {/* TIMELINE */}
       <div className="relative rounded-2xl border border-white/10 bg-black/30 p-3">
         <div className="flex items-center gap-1.5 mb-2">
           <History className="w-3 h-3 text-white/50" />
@@ -153,6 +181,18 @@ export function CognitivePanel({
             })}
           </ol>
         )}
+      </div>
+    </div>
+  );
+}
+
+function SignalChip({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color: string }) {
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.02] px-2.5 py-1.5">
+      <span style={{ color: `${color}cc` }}>{icon}</span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[9px] uppercase tracking-wider text-white/40">{label}</p>
+        <p className="truncate text-[11px] font-medium text-white/90">{value}</p>
       </div>
     </div>
   );
@@ -224,7 +264,7 @@ function Waveform({ color, intensity }: { color: string; intensity: number }) {
     <div className="flex items-end gap-[3px] h-12">
       {Array.from({ length: bars }).map((_, i) => {
         const phase = (tick / 30 + i * 0.4);
-        const wave = (Math.sin(phase) + 1) / 2; // 0..1
+        const wave = (Math.sin(phase) + 1) / 2;
         const noise = (Math.sin(phase * 2.3 + i) + 1) / 2;
         const h = 4 + wave * 30 * (0.4 + intensity) + noise * 6 * intensity;
         return (
