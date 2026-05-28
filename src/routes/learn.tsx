@@ -17,6 +17,7 @@ import { QuizPanel } from "@/components/learn/QuizPanel";
 import { ResourcesPanel } from "@/components/learn/ResourcesPanel";
 import { MasteryBurst } from "@/components/learn/MasteryBurst";
 import { AttentionWidget, AttentionConsentModal, type AttentionStatus } from "@/components/learn/AttentionWidget";
+import { SessionHistoryButton, type SessionRow } from "@/components/learn/SessionHistory";
 import { useChatStream, type ChatMsg } from "@/hooks/useChatStream";
 import { useCognitiveMetrics, type Signal, type CognitiveState } from "@/hooks/useCognitiveState";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
@@ -85,6 +86,8 @@ function LearnPage() {
   const [attentionOverride, setAttentionOverride] = useState<CognitiveState | null>(null);
 
   const [rightCollapsed, setRightCollapsed] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { send, streaming, provider } = useChatStream();
   const { supported: ttsSupported, speaking, speak, cancel: cancelSpeak, hasBanglaVoice } = useSpeech();
