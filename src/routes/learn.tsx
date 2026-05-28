@@ -765,7 +765,15 @@ function LearnPage() {
           />
 
           {phase === "topic" ? (
-            <TopicInput
+            <>
+              <div className="absolute top-4 right-4 z-30">
+                <SessionHistoryButton
+                  userId={userId}
+                  currentSessionId={currentSessionId}
+                  onResume={resumeSession}
+                />
+              </div>
+              <TopicInput
               onPick={startTeaching}
               onDirectChat={() => startTeaching("সরাসরি চ্যাট")}
               onGenerateMap={async (t) => {
@@ -801,6 +809,7 @@ function LearnPage() {
                 }
               }}
             />
+            </>
           ) : (
             <>
               <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6">
