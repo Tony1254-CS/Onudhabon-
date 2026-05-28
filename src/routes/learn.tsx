@@ -690,7 +690,6 @@ function LearnPage() {
       }
     }
   };
-  };
 
   if (authed === null) return <div className="min-h-screen bg-[var(--bg-primary)]" />;
   if (!authed) return null;
