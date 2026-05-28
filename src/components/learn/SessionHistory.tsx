@@ -129,6 +129,11 @@ export function SessionHistoryButton({
                               <p className="font-bangla text-sm text-[var(--text-primary)] truncate">
                                 {r.topic || "সরাসরি চ্যাট"}
                               </p>
+                              {r.subject && (
+                                <p className="font-bangla text-[10px] uppercase tracking-[0.15em] text-[var(--accent-cold-blue)]/80 mt-0.5">
+                                  {r.subject}
+                                </p>
+                              )}
                               <div className="flex items-center gap-2 mt-1 text-[10px] text-[var(--text-secondary)] tabular-nums">
                                 <Clock className="w-3 h-3" />
                                 <span>{timeAgo(r.updated_at)}</span>
