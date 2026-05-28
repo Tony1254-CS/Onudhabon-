@@ -361,7 +361,7 @@ function GalaxyPage() {
         </div>
       </motion.div>
 
-      </motion.div>
+
 
       {/* Empty state */}
       {isEmpty && (
