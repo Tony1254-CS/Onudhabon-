@@ -95,11 +95,8 @@ function SettingsPage() {
     if (!userId) return;
     setJoining(true);
     try {
-      const { data: cls, error: cErr } = await supabase
-        .from("classrooms")
-        .select("id, name")
-        .eq("join_code", code)
-        .maybeSingle();
+      const { data: rows, error: cErr } = await supabase.rpc("find_classroom_by_code", { _code: code });
+      const cls = Array.isArray(rows) ? rows[0] : null;
       if (cErr || !cls) { toast.error("ক্লাসরুম পাওয়া যায়নি"); setJoining(false); return; }
       const { error: mErr } = await supabase
         .from("classroom_members")
