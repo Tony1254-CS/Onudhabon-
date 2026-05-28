@@ -43,7 +43,7 @@ export function SessionHistoryButton({
     setLoading(true);
     const { data, error } = await supabase
       .from("sessions")
-      .select("id, topic, cognitive_state, mastery_score, messages, created_at, updated_at")
+      .select("id, topic, subject, cognitive_state, mastery_score, messages, created_at, updated_at")
       .eq("user_id", userId)
       .order("updated_at", { ascending: false })
       .limit(30);
